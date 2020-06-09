@@ -2250,6 +2250,7 @@ TEST_F(DBTest, Randomized) {
         ASSERT_LEVELDB_OK(model.Write(WriteOptions(), &b));
         //ASSERT_LEVELDB_OK(db_->Write(WriteOptions(), &b));
         ASSERT_LEVELDB_OK(pDb->Write(*params));
+        delete params1;
       }
 
       if ((step % 100) == 0) {

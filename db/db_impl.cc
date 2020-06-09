@@ -1272,9 +1272,7 @@ void DBImpl::AppendDelete(DBImpl::WriteParams& p, const WriteOptions& options,
 
 Status DBImpl::Write(WriteParams& p) {
   MutexLock l(&mutex_);
- // mutex_.Lock();
   writers_.push_back(&(p.writer));
-  //mutex_.Unlock();
   while (!p.writer.done) {
     p.writer.cv.Wait();
   }
