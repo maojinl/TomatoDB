@@ -1272,7 +1272,9 @@ void DBImpl::AppendDelete(DBImpl::WriteParams& p, const WriteOptions& options,
 
 Status DBImpl::Write(WriteParams& p) {
   MutexLock l(&mutex_);
+ // mutex_.Lock();
   writers_.push_back(&(p.writer));
+  //mutex_.Unlock();
   while (!p.writer.done) {
     p.writer.cv.Wait();
   }
@@ -1288,10 +1290,14 @@ void DBImpl::WriteWorkerThread(void* db) {
   reinterpret_cast<DBImpl*>(db)->WriteWorker();
 }
 
+int workercount = 0;
+
 void DBImpl::WriteWorker() {
   // May temporarily unlock and wait.
   while (!shutting_down_.load(std::memory_order_acquire)) {
+   
     if (!writers_.empty()) {
+      workercount++;
       mutex_.Lock();
       Writer* w = writers_.front();
       WriteBatch* updates = w->batch;

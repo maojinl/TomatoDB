@@ -249,8 +249,8 @@ class DBTest : public testing::Test {
     dbname_ = testing::TempDir() + "db_test";
     DestroyDB(dbname_, Options());
     db_ = nullptr;
+    params = nullptr;
     Reopen();
-    params = DBImpl::CreateParams(dbfull());
   }
 
   ~DBTest() {
@@ -325,6 +325,8 @@ class DBTest : public testing::Test {
 
     Status s = DBImpl::Open(opts, dbname_, &db_);
     if (s.ok()) {
+      delete params;
+      params = DBImpl::CreateParams(dbfull());
       dbfull()->PreWriteWorker();
     }
 
