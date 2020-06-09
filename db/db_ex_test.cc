@@ -334,11 +334,19 @@ class DBTest : public testing::Test {
   }
 
   Status Put(const std::string& k, const std::string& v) {
-    return dbfull()->Put(*params, WriteOptions(), k, v);
+    Status s = dbfull()->Put(*params, WriteOptions(), k, v);
+    if (!s.ok()) {
+      std::cout << "error 1!" << s.ToString() << std::endl;
+    }
+    return s;
   }
 
   Status Delete(const std::string& k) { 
-    return dbfull()->Delete(*params, WriteOptions(), k); 
+    Status s = dbfull()->Delete(*params, WriteOptions(), k); 
+    if (!s.ok()) {
+      std::cout << "error 2! " << s.ToString() << std::endl;
+    }
+    return s;
   }
 
   std::string Get(const std::string& k, const Snapshot* snapshot = nullptr) {
@@ -2177,7 +2185,7 @@ static bool CompareIterators(int step, DB* model, DB* db,
                    "step %d: Value mismatch for key '%s': '%s' vs. '%s'\n",
                    step, EscapeString(miter->key()).c_str(),
                    EscapeString(miter->value()).c_str(),
-                   EscapeString(miter->value()).c_str());
+                   EscapeString(dbiter->value()).c_str());
       ok = false;
     }
   }

@@ -339,8 +339,11 @@ void SkipList<Key, Comparator>::Insert(const Key& key) {
   // here since Insert() is externally synchronized.
   Node* prev[kMaxHeight];
   Node* x = FindGreaterOrEqual(key, prev);
-
+  char c = 'a';
   // Our data structure does not allow duplicate insertion
+  if (x != nullptr && Equal(key, x->key)) {
+    c = 'e';
+  }
   assert(x == nullptr || !Equal(key, x->key));
 
   int height = RandomHeight();
