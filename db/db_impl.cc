@@ -39,46 +39,6 @@ namespace leveldb {
 
 const int kNumNonTableCacheFiles = 10;
 
-// Information kept for every waiting writer
-struct DBImpl::Writer {
-  explicit Writer(port::Mutex* mu)
-      : batch(nullptr), sync(false), done(false), cv(mu) {}
-
-  Status status;
-  WriteBatch* batch;
-  bool sync;
-  bool done;
-  port::CondVar cv;
-};
-
-class DBImpl::WriteParams {
- public:
-  WriteBatch batch;
-  DBImpl::Writer writer;
-  WriteParams(DBImpl* pDb) : batch(), writer(&(pDb->mutex_)){};
-
-  void PreparePutParams(const WriteOptions& options, const Slice& key,
-                        const Slice& value) {
-    batch.Put(key, value);
-    writer.batch = &batch;
-    writer.sync = options.sync;
-    writer.done = false;
-  };
-
-  void PrepareDeleteParams(const WriteOptions& options, const Slice& key) {
-    
-    batch.Delete(key);
-    writer.batch = &batch;
-    writer.sync = options.sync;
-    writer.done = false;
-  };
-
-  void ClearParams() {
-    batch.Clear();
-    writer.done = false;
-  }
-};
-
 struct DBImpl::CompactionState {
   // Files produced by compaction
   struct Output {
@@ -1221,10 +1181,10 @@ void DBImpl::RecordReadSample(Slice key) {
   }
 }
 
-typename DBImpl::WriteParams* DBImpl::CreateParams(DBImpl* pDb) {
-  DBImpl::WriteParams* p = new DBImpl::WriteParams(pDb);
-  return p;
-}
+//typename DBImpl::WriteParams* DBImpl::CreateParams(DBImpl* pDb) {
+//  DBImpl::WriteParams* p = new DBImpl::WriteParams(pDb);
+//  return p;
+//}
 
 const Snapshot* DBImpl::GetSnapshot() {
   MutexLock l(&mutex_);
@@ -1245,36 +1205,37 @@ Status DBImpl::Delete(const WriteOptions& options, const Slice& key) {
   return DB::Delete(options, key);
 }
 
-Status DBImpl::Put(DBImpl::WriteParams& p, const WriteOptions& o,
-                   const Slice& key, const Slice& val) {
+Status DBImpl::Put(WriteParams& p, const Slice& key, const Slice& val) {
   p.ClearParams();
-  p.PreparePutParams(o, key, val);
+  p.PreparePutParams(key, val);
   return Write(p);
 }
 
-void DBImpl::AppendPut(DBImpl::WriteParams& p, const WriteOptions& o,
-                   const Slice& key, const Slice& val) {
-  p.PreparePutParams(o, key, val);
+void DBImpl::AppendPut(WriteParams& p, const Slice& key, const Slice& val) {
+  p.PreparePutParams(key, val);
 }
 
-
-Status DBImpl::Delete(DBImpl::WriteParams& p, const WriteOptions& options,
-                      const Slice& key) {
+Status DBImpl::Delete(WriteParams& p, const Slice& key) {
   p.ClearParams();
-  p.PrepareDeleteParams(options, key);
+  p.PrepareDeleteParams(key);
   return Write(p);
 }
 
-void DBImpl::AppendDelete(DBImpl::WriteParams& p, const WriteOptions& options,
-                      const Slice& key) {
-  p.PrepareDeleteParams(options, key);
+void DBImpl::AppendDelete(WriteParams& p, const Slice& key) {
+  p.PrepareDeleteParams(key);
 }
 
 Status DBImpl::Write(WriteParams& p) {
   MutexLock l(&mutex_);
+  if (!writers_.empty()) {
+    int s = 10;
+  }
   writers_.push_back(&(p.writer));
   while (!p.writer.done) {
     p.writer.cv.Wait();
+  }
+  if (!writers_.empty()) {
+    int s = 10;
   }
   return p.writer.status;
 }
