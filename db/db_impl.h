@@ -15,7 +15,7 @@
 
 #include "leveldb/db.h"
 #include "leveldb/env.h"
-#include "leveldb/write_params.h"
+#include "db/write_params.h"
 
 #include "port/port.h"
 #include "port/thread_annotations.h"

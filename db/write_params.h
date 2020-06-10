@@ -42,11 +42,11 @@ struct Writer {
   port::CondVar cv;
 };
 
-
 class LEVELDB_EXPORT WriteParams {
  public:
+
   friend class DBImpl;
-  WriteParams() = delete;
+  WriteParams() = default;
 
   // Intentionally copyable.
   WriteParams(const WriteParams&) = delete;

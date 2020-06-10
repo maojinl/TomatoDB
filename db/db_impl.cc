@@ -638,7 +638,7 @@ Status DBImpl::TEST_CompactMemTable() {
   //    s = bg_error_;
   //  }
   //}
-  WriteParams p(&(this->mutex_));
+  WriteParams p(this);
   p.writer.batch = nullptr;
   Status s = Write(p);
   if (s.ok()) {
