@@ -42,6 +42,7 @@ class DBImpl : public DB {
   Status Put(const WriteOptions&, const Slice& key,
              const Slice& value) override;
   Status Delete(const WriteOptions&, const Slice& key) override;
+  WriteParams* CreateParams();
   Status Put(WriteParams& p, const Slice& key,
              const Slice& val);
   void AppendPut(WriteParams& p, const Slice& key,

@@ -638,7 +638,7 @@ Status DBImpl::TEST_CompactMemTable() {
   //    s = bg_error_;
   //  }
   //}
-  WriteParams p(this);
+  WriteParams p(&(this->mutex_));
   p.writer.batch = nullptr;
   Status s = Write(p);
   if (s.ok()) {
@@ -1179,6 +1179,11 @@ void DBImpl::RecordReadSample(Slice key) {
   if (versions_->current()->RecordReadSample(key)) {
     MaybeScheduleCompaction();
   }
+}
+
+WriteParams* DBImpl::CreateParams() {
+  WriteParams* p = new WriteParams(&(this->mutex_));
+  return p;
 }
 
 //typename DBImpl::WriteParams* DBImpl::CreateParams(DBImpl* pDb) {
