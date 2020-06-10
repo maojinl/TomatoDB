@@ -638,7 +638,7 @@ Status DBImpl::TEST_CompactMemTable() {
   //    s = bg_error_;
   //  }
   //}
-  WriteParams p(this);
+  WriteParams p(&(this->mutex_));
   p.writer.batch = nullptr;
   Status s = Write(p);
   if (s.ok()) {
@@ -1181,10 +1181,10 @@ void DBImpl::RecordReadSample(Slice key) {
   }
 }
 
-typename DBImpl::WriteParams* DBImpl::CreateParams(DBImpl* pDb) {
-  DBImpl::WriteParams* p = new DBImpl::WriteParams(pDb);
-  return p;
-}
+//typename DBImpl::WriteParams* DBImpl::CreateParams(DBImpl* pDb) {
+//  DBImpl::WriteParams* p = new DBImpl::WriteParams(pDb);
+//  return p;
+//}
 
 const Snapshot* DBImpl::GetSnapshot() {
   MutexLock l(&mutex_);

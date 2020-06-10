@@ -16,6 +16,7 @@
 #include "leveldb/env.h"
 #include "leveldb/filter_policy.h"
 #include "leveldb/table.h"
+#include "leveldb/write_params.h"
 #include "port/port.h"
 #include "port/thread_annotations.h"
 #include "util/hash.h"
@@ -227,7 +228,7 @@ class SpecialEnv : public EnvWrapper {
 };
 
 struct PollingThreadData {
-  DBImpl::WriteParams* pParam;
+  WriteParams* pParam;
   DBImpl* pDB;
   int id;
 };
@@ -242,7 +243,7 @@ class DBTest : public testing::Test {
 
   //typedef typename DBImpl::WriteParams WriteParams;
 
-  DBImpl::WriteParams* params;
+  WriteParams* params;
 
   DBTest() : env_(new SpecialEnv(Env::Default())), option_config_(kDefault) {
     filter_policy_ = NewBloomFilterPolicy(10);
@@ -326,7 +327,7 @@ class DBTest : public testing::Test {
     Status s = DBImpl::Open(opts, dbname_, &db_);
     if (s.ok()) {
       delete params;
-      params = DBImpl::CreateParams(dbfull());
+      params = new WriteParams(dbfull());
       dbfull()->PreWriteWorker();
     }
 
@@ -334,11 +335,11 @@ class DBTest : public testing::Test {
   }
 
   Status Put(const std::string& k, const std::string& v) {
-    return dbfull()->Put(*params, WriteOptions(), k, v);
+    return dbfull()->Put(*params, k, v);
   }
 
   Status Delete(const std::string& k) { 
-    return dbfull()->Delete(*params, WriteOptions(), k); 
+    return dbfull()->Delete(*params, k); 
   }
 
   std::string Get(const std::string& k, const Snapshot* snapshot = nullptr) {
@@ -1791,13 +1792,13 @@ TEST_F(DBTest, WriteSyncError) {
   // (b) Normal write should succeed
   WriteOptions w;
   //ASSERT_LEVELDB_OK(db_->Put(w, "k1", "v1"));
-  ASSERT_LEVELDB_OK(dbfull()->Put(*params, w, "k1", "v1"));
+  ASSERT_LEVELDB_OK(dbfull()->Put(*params, "k1", "v1"));
   ASSERT_EQ("v1", Get("k1"));
 
   // (c) Do a sync write; should fail
   w.sync = true;
   //ASSERT_TRUE(!db_->Put(w, "k2", "v2").ok());
-  ASSERT_TRUE(!dbfull()->Put(*params, w, "k2", "v2").ok());
+  ASSERT_TRUE(!dbfull()->Put(*params, "k2", "v2").ok());
   ASSERT_EQ("v1", Get("k1"));
   ASSERT_EQ("NOT_FOUND", Get("k2"));
 
@@ -1807,7 +1808,7 @@ TEST_F(DBTest, WriteSyncError) {
   // (e) Do a non-sync write; should fail
   w.sync = false;
   //ASSERT_TRUE(!db_->Put(w, "k3", "v3").ok());
-  ASSERT_TRUE(!dbfull()->Put(*params, w, "k3", "v3").ok());
+  ASSERT_TRUE(!dbfull()->Put(*params, "k3", "v3").ok());
   ASSERT_EQ("v1", Get("k1"));
   ASSERT_EQ("NOT_FOUND", Get("k2"));
   ASSERT_EQ("NOT_FOUND", Get("k3"));
@@ -1973,7 +1974,7 @@ static void MTThreadBody(void* arg) {
   std::string value;
   char valbuf[1500];
   DBImpl* pDb = reinterpret_cast<DBImpl*>(db);
-  DBImpl::WriteParams* params = DBImpl::CreateParams(pDb);
+  WriteParams* params = new WriteParams(pDb);
   
   while (!t->state->stop.load(std::memory_order_acquire)) {
     t->state->counter[id].store(counter, std::memory_order_release);
@@ -1988,7 +1989,7 @@ static void MTThreadBody(void* arg) {
       std::snprintf(valbuf, sizeof(valbuf), "%d.%d.%-1000d", key, id,
                     static_cast<int>(counter));
       //ASSERT_LEVELDB_OK(test->Put(WriteOptions(), Slice(keybuf), Slice(valbuf)));
-      ASSERT_LEVELDB_OK(pDb->Put(*params, WriteOptions(), Slice(keybuf), Slice(valbuf)));
+      ASSERT_LEVELDB_OK(pDb->Put(*params, Slice(keybuf), Slice(valbuf)));
     } else {
       // Read a value and verify that it matches the pattern written above.
       Status s = db->Get(ReadOptions(), Slice(keybuf), &value);
@@ -2225,7 +2226,7 @@ TEST_F(DBTest, Randomized) {
         WriteBatch b;
         WriteOptions o;
         auto pDb = dbfull();
-        auto params1 = DBImpl::CreateParams(pDb);
+        auto params1 = new WriteParams(pDb);
         const int num = rnd.Uniform(8);
         for (int i = 0; i < num; i++) {
           if (i == 0 || !rnd.OneIn(10)) {
@@ -2239,12 +2240,12 @@ TEST_F(DBTest, Randomized) {
             b.Put(k, v);
             Slice sk(k);
             Slice sv(v);
-            pDb->AppendPut(*params1, o, sk, sv);
+            pDb->AppendPut(*params1, sk, sv);
           } else {
             Slice sk(k);
             Slice sv(v);
             b.Delete(k);
-            pDb->AppendDelete(*params1, o, sk);
+            pDb->AppendDelete(*params1, sk);
           }
         }
         ASSERT_LEVELDB_OK(model.Write(WriteOptions(), &b));

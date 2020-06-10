@@ -51,7 +51,7 @@ class LEVELDB_EXPORT WriteParams {
   // Intentionally copyable.
   WriteParams(const WriteParams&) = delete;
   WriteParams& operator=(const WriteParams&) = delete;
-  WriteParams(port::Mutex* mu) : batch(), options(), writer(mu){};
+  WriteParams(DBImpl* pDb) : batch(), options(), writer(&(pDb->mutex_)){};
   ~WriteParams() = default;
 
   WriteBatch batch;
