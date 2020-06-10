@@ -220,7 +220,9 @@ class DBImpl : public DB {
 
   bool background_polling_thread_runing GUARDED_BY(mutex_);
 
-  port::CondVar background_polling_thread_finished_signal_ GUARDED_BY(mutex_);
+  port::Mutex write_worker_mutex_;
+
+  port::CondVar write_worker_idle_cv_ GUARDED_BY(write_worker_mutex_);
 };
 
 // Sanitize db options.  The caller should delete result.info_log if

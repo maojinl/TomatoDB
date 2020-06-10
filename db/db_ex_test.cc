@@ -226,12 +226,6 @@ class SpecialEnv : public EnvWrapper {
   }
 };
 
-struct PollingThreadData {
-  WriteParams* pParam;
-  DBImpl* pDB;
-  int id;
-};
-
 class DBTest : public testing::Test {
  public:
   std::string dbname_;

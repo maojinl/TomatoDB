@@ -134,7 +134,7 @@ DBImpl::DBImpl(const Options& raw_options, const std::string& dbname)
       tmp_batch_(new WriteBatch),
       background_compaction_scheduled_(false),
       background_polling_thread_runing(false),
-      background_polling_thread_finished_signal_(&mutex_),
+      write_worker_idle_cv_(&write_worker_mutex_),
       manual_compaction_(nullptr),
       versions_(new VersionSet(dbname_, &options_, table_cache_,
                                &internal_comparator_)) {}
@@ -143,6 +143,7 @@ DBImpl::~DBImpl() {
   // Wait for background work to finish.
   mutex_.Lock();
   shutting_down_.store(true, std::memory_order_release);
+  write_worker_idle_cv_.SignalAll();
   while (background_compaction_scheduled_) {
     background_work_finished_signal_.Wait();
   }
@@ -638,9 +639,9 @@ Status DBImpl::TEST_CompactMemTable() {
   //    s = bg_error_;
   //  }
   //}
-  WriteParams p(&(this->mutex_));
-  p.writer.batch = nullptr;
-  Status s = Write(p);
+  WriteParams* p = this->CreateParams();
+  p->writer.batch = nullptr;
+  Status s = Write(*p);
   if (s.ok()) {
     // Wait until the compaction completes
     MutexLock l(&mutex_);
@@ -651,6 +652,7 @@ Status DBImpl::TEST_CompactMemTable() {
         s = bg_error_;
     }
   }
+  delete p;
   return s;
 }
 
@@ -1182,7 +1184,7 @@ void DBImpl::RecordReadSample(Slice key) {
 }
 
 WriteParams* DBImpl::CreateParams() {
-  WriteParams* p = new WriteParams(&(this->mutex_));
+  WriteParams* p = new WriteParams(&(this->write_worker_mutex_));
   return p;
 }
 
@@ -1231,16 +1233,13 @@ void DBImpl::AppendDelete(WriteParams& p, const Slice& key) {
 }
 
 Status DBImpl::Write(WriteParams& p) {
-  MutexLock l(&mutex_);
-  if (!writers_.empty()) {
-    int s = 10;
+  MutexLock l(&write_worker_mutex_);
+  if (writers_.empty()) {
+    write_worker_idle_cv_.Signal();
   }
   writers_.push_back(&(p.writer));
   while (!p.writer.done) {
     p.writer.cv.Wait();
-  }
-  if (!writers_.empty()) {
-    int s = 10;
   }
   return p.writer.status;
 }
@@ -1254,14 +1253,12 @@ void DBImpl::WriteWorkerThread(void* db) {
   reinterpret_cast<DBImpl*>(db)->WriteWorker();
 }
 
-int workercount = 0;
-
 void DBImpl::WriteWorker() {
   // May temporarily unlock and wait.
   while (!shutting_down_.load(std::memory_order_acquire)) {
-   
+    write_worker_mutex_.Lock();
     if (!writers_.empty()) {
-      workercount++;
+      write_worker_mutex_.Unlock();
       mutex_.Lock();
       Writer* w = writers_.front();
       WriteBatch* updates = w->batch;
@@ -1272,7 +1269,9 @@ void DBImpl::WriteWorker() {
       Writer* last_writer = w;
       if (status.ok() &&
           updates != nullptr) {  // nullptr batch is for compactions
+        write_worker_mutex_.Lock();
         WriteBatch* write_batch = BuildBatchGroup(&last_writer);
+        write_worker_mutex_.Unlock();
         WriteBatchInternal::SetSequence(write_batch, last_sequence + 1);
         last_sequence += WriteBatchInternal::Count(write_batch);
 
@@ -1305,7 +1304,9 @@ void DBImpl::WriteWorker() {
 
         versions_->SetLastSequence(last_sequence);
       }
+      mutex_.Unlock();
 
+      write_worker_mutex_.Lock();
       while (!shutting_down_.load(std::memory_order_acquire)) {
         Writer* ready = writers_.front();
         writers_.pop_front();
@@ -1314,14 +1315,15 @@ void DBImpl::WriteWorker() {
         ready->cv.Signal();
         if (ready == last_writer) break;
       }
-      mutex_.Unlock();
+      write_worker_mutex_.Unlock();
     } 
     else {
       //env_->SleepForMicroseconds(10);
+      write_worker_idle_cv_.Wait();
+      write_worker_mutex_.Unlock();
     }
   }
   background_polling_thread_runing = false;
-  background_polling_thread_finished_signal_.Signal();
   return;
 }
 
