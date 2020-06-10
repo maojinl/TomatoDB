@@ -2249,7 +2249,7 @@ TEST_F(DBTest, Randomized) {
         }
         ASSERT_LEVELDB_OK(model.Write(WriteOptions(), &b));
         //ASSERT_LEVELDB_OK(db_->Write(WriteOptions(), &b));
-        ASSERT_LEVELDB_OK(pDb->Write(*params));
+        ASSERT_LEVELDB_OK(pDb->Write(*params1));
         delete params1;
       }
 

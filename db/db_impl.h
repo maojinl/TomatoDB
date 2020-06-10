@@ -15,6 +15,7 @@
 
 #include "leveldb/db.h"
 #include "leveldb/env.h"
+#include "leveldb/write_params.h"
 
 #include "port/port.h"
 #include "port/thread_annotations.h"
@@ -30,8 +31,6 @@ class VersionSet;
 
 class DBImpl : public DB {
  public:
-  class WriteParams;
-
   DBImpl(const Options& options, const std::string& dbname);
 
   DBImpl(const DBImpl&) = delete;
@@ -43,18 +42,16 @@ class DBImpl : public DB {
   Status Put(const WriteOptions&, const Slice& key,
              const Slice& value) override;
   Status Delete(const WriteOptions&, const Slice& key) override;
-  Status Put(DBImpl::WriteParams& p, const WriteOptions& o, const Slice& key,
+  Status Put(WriteParams& p, const Slice& key,
              const Slice& val);
-  void AppendPut(DBImpl::WriteParams& p, const WriteOptions& o, const Slice& key,
+  void AppendPut(WriteParams& p, const Slice& key,
              const Slice& val);
-  Status Delete(DBImpl::WriteParams& p, const WriteOptions& options,
-             const Slice& key);
-  void AppendDelete(DBImpl::WriteParams& p, const WriteOptions& options,
-                const Slice& key);
+  Status Delete(WriteParams& p, const Slice& key);
+  void AppendDelete(WriteParams& p, const Slice& key);
   Status Write(const WriteOptions& options, WriteBatch* updates) override;
   Status Get(const ReadOptions& options, const Slice& key,
              std::string* value) override;
-  Status Write(DBImpl::WriteParams& p);
+  Status Write(WriteParams& p);
   void WriteWorker();
   void PreWriteWorker();
   static void WriteWorkerThread(void* db);
@@ -87,12 +84,9 @@ class DBImpl : public DB {
   // bytes.
   void RecordReadSample(Slice key);
 
-  static typename DBImpl::WriteParams* CreateParams(DBImpl* pDb);
-
  private:
   friend class DB;
   struct CompactionState;
-  struct Writer;
 
   // Information for a manual compaction
   struct ManualCompaction {
