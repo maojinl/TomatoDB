@@ -33,7 +33,6 @@
 
 # Folders
 build/
-cmake/
 lib/
 third_party/googletest/
 .vs/
