@@ -143,14 +143,14 @@ DBImpl::~DBImpl() {
   // Wait for background work to finish.
   mutex_.Lock();
   shutting_down_.store(true, std::memory_order_release);
-  write_worker_idle_cv_.SignalAll();
+  
   while (background_compaction_scheduled_) {
     background_work_finished_signal_.Wait();
   }
   mutex_.Unlock();
 
-  while (background_polling_thread_runing) {
-    //background_polling_thread_finished_signal_.Wait();
+  while (background_polling_thread_runing) { 
+    write_worker_idle_cv_.SignalAll();
     env_->SleepForMicroseconds(100);
   }
 
@@ -1188,11 +1188,6 @@ WriteParams* DBImpl::CreateParams() {
   return p;
 }
 
-//typename DBImpl::WriteParams* DBImpl::CreateParams(DBImpl* pDb) {
-//  DBImpl::WriteParams* p = new DBImpl::WriteParams(pDb);
-//  return p;
-//}
-
 const Snapshot* DBImpl::GetSnapshot() {
   MutexLock l(&mutex_);
   return snapshots_.New(versions_->LastSequence());
@@ -1259,19 +1254,22 @@ void DBImpl::WriteWorker() {
     write_worker_mutex_.Lock();
     if (!writers_.empty()) {
       write_worker_mutex_.Unlock();
-      mutex_.Lock();
       Writer* w = writers_.front();
       WriteBatch* updates = w->batch;
-      
+
+      mutex_.Lock();
       Status status = MakeRoomForWrite(updates == nullptr);
+      mutex_.Unlock();
 
       uint64_t last_sequence = versions_->LastSequence();
       Writer* last_writer = w;
       if (status.ok() &&
           updates != nullptr) {  // nullptr batch is for compactions
+
         write_worker_mutex_.Lock();
         WriteBatch* write_batch = BuildBatchGroup(&last_writer);
         write_worker_mutex_.Unlock();
+
         WriteBatchInternal::SetSequence(write_batch, last_sequence + 1);
         last_sequence += WriteBatchInternal::Count(write_batch);
 
@@ -1280,7 +1278,6 @@ void DBImpl::WriteWorker() {
         // and protects against concurrent loggers and concurrent writes
         // into mem_.
         {
-          mutex_.Unlock();
           status = log_->AddRecord(WriteBatchInternal::Contents(write_batch));
           bool sync_error = false;
           if (status.ok() && w->sync) {
@@ -1292,19 +1289,19 @@ void DBImpl::WriteWorker() {
           if (status.ok()) {
             status = WriteBatchInternal::InsertInto(write_batch, mem_);
           }
-          mutex_.Lock();
+          
           if (sync_error) {
             // The state of the log file is indeterminate: the log record we
             // just added may or may not show up when the DB is re-opened.
             // So we force the DB into a mode where all future writes fail.
+            mutex_.Lock();
             RecordBackgroundError(status);
+            mutex_.Unlock();
           }
         }
         if (write_batch == tmp_batch_) tmp_batch_->Clear();
-
         versions_->SetLastSequence(last_sequence);
       }
-      mutex_.Unlock();
 
       write_worker_mutex_.Lock();
       while (!shutting_down_.load(std::memory_order_acquire)) {
@@ -1403,7 +1400,7 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* updates) {
 // REQUIRES: Writer list must be non-empty
 // REQUIRES: First writer must have a non-null batch
 WriteBatch* DBImpl::BuildBatchGroup(Writer** last_writer) {
-  mutex_.AssertHeld();
+  write_worker_mutex_.AssertHeld();
   assert(!writers_.empty());
   Writer* first = writers_.front();
   WriteBatch* result = first->batch;

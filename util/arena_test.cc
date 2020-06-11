@@ -3,6 +3,7 @@
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 
 #include "util/arena.h"
+#include "util/memoryhandler.h"
 
 #include "gtest/gtest.h"
 #include "util/random.h"
@@ -58,6 +59,26 @@ TEST(ArenaTest, Simple) {
   }
 }
 
+TEST(MemoryHandlerTest, Simple) {
+  MemoryHandler mem;
+  vector<char> v;
+  const int N = 1024 * 1024;
+  v.resize(N);
+  char* p = &v[0];
+  mem.InitHeap(p, N);
+  void* p1 = mem.AllocateAligned(100);
+  size_t expectSize = 104 + mem.MemoryAligned(sizeof(MemoryBHeader));
+  ASSERT_EQ(mem.MemoryUsage(), expectSize);
+  mem.Destroy(p1);
+  ASSERT_EQ(mem.MemoryUsage(), 0);
+
+   void* pp[1024];
+   for (int i = 0; i < 1024; i++) {
+    pp[i] = mem.AllocateAligned(1000);
+  }
+   ASSERT_EQ(mem.MemoryUsage(), N);
+   ASSERT_EQ(mem.Available(), 0);
+}
 }  // namespace leveldb
 
 int main(int argc, char** argv) {
