@@ -81,8 +81,11 @@ TEST(MemoryHandlerTest, Simple) {
    mem.Destroy(pp[999]);
    mem.Destroy(pp[500]);
    ASSERT_EQ(mem.MemoryUsage(), N - 2048);
-   ASSERT_EQ(mem.Available(), 2048);
+   ASSERT_EQ(mem.Available(), 1000);
+   mem.Destroy(pp[998]);
+   ASSERT_EQ(mem.Available(), 2024);
 }
+
 }  // namespace leveldb
 
 int main(int argc, char** argv) {
