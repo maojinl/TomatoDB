@@ -11,6 +11,7 @@
 #include "db/skiplist.h"
 #include "leveldb/db.h"
 #include "util/arena.h"
+#include "util\memoryhandler.h"
 
 namespace leveldb {
 
@@ -21,7 +22,7 @@ class MemTable {
  public:
   // MemTables are reference counted.  The initial reference count
   // is zero and the caller must call Ref() at least once.
-  explicit MemTable(const InternalKeyComparator& comparator);
+  explicit MemTable(const InternalKeyComparator& comparator, size_t size);
 
   MemTable(const MemTable&) = delete;
   MemTable& operator=(const MemTable&) = delete;
@@ -79,6 +80,7 @@ class MemTable {
   KeyComparator comparator_;
   int refs_;
   Arena arena_;
+  MemoryPool memPool_;
   Table table_;
 };
 

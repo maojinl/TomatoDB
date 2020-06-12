@@ -31,12 +31,12 @@
 #include <cassert>
 #include <cstdlib>
 
-#include "util/arena.h"
+#include "util/memoryhandler.h"
 #include "util/random.h"
 
 namespace leveldb {
 
-class Arena;
+class MemoryPool;
 
 template <typename Key, class Comparator>
 class SkipList {
@@ -47,7 +47,7 @@ class SkipList {
   // Create a new SkipList object that will use "cmp" for comparing keys,
   // and will allocate memory using "*arena".  Objects allocated in the arena
   // must remain allocated for the lifetime of the skiplist object.
-  explicit SkipList(Comparator cmp, Arena* arena);
+  explicit SkipList(Comparator cmp, MemoryPool* pMemPool);
 
   SkipList(const SkipList&) = delete;
   SkipList& operator=(const SkipList&) = delete;
@@ -129,7 +129,7 @@ class SkipList {
 
   // Immutable after construction
   Comparator const compare_;
-  Arena* const arena_;  // Arena used for allocations of nodes
+  MemoryPool* const pMemPool_;  // Arena used for allocations of nodes
 
   Node* const head_;
 
@@ -181,7 +181,7 @@ struct SkipList<Key, Comparator>::Node {
 template <typename Key, class Comparator>
 typename SkipList<Key, Comparator>::Node* SkipList<Key, Comparator>::NewNode(
     const Key& key, int height) {
-  char* const node_memory = arena_->AllocateAligned(
+  char* const node_memory = pMemPool_->AllocateAligned(
       sizeof(Node) + sizeof(std::atomic<Node*>) * (height - 1));
   return new (node_memory) Node(key);
 }
@@ -322,9 +322,9 @@ typename SkipList<Key, Comparator>::Node* SkipList<Key, Comparator>::FindLast()
 }
 
 template <typename Key, class Comparator>
-SkipList<Key, Comparator>::SkipList(Comparator cmp, Arena* arena)
+SkipList<Key, Comparator>::SkipList(Comparator cmp, MemoryPool* pMemPool)
     : compare_(cmp),
-      arena_(arena),
+      pMemPool_(pMemPool),
       head_(NewNode(0 /* any key will do */, kMaxHeight)),
       max_height_(1),
       rnd_(0xdeadbeef) {
