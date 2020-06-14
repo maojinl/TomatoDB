@@ -11,7 +11,8 @@
 #include <stddef.h>
 #include <xatomic.h>
 #include <atomic>
-#include <util\arena.h>
+#include "util\arena.h"
+#include "util\arena_ex.h"
 
 using namespace std;
 
@@ -33,7 +34,6 @@ class MemoryHandler {
   Sint64 mBlocks;
   std::atomic<size_t> memory_usage_;  // Used Memory Size
   Sint64 mAllocBaseSize;              // AllocBase Size
-  Sint64 mAlignedHeaderSize;
 
   char* skip_header(char* p) {
     char* ret = (char*)(reinterpret_cast<Sint64>(p) + mAlignedHeaderSize);
@@ -47,6 +47,8 @@ class MemoryHandler {
   }
 
  public:
+  bool initialized;
+  Sint64 mAlignedHeaderSize;
   MemoryHandler()
       : mReal(0),
         mpAlloc(0),
@@ -55,6 +57,7 @@ class MemoryHandler {
         mBlocks(0),
         memory_usage_(0),
         mAllocBaseSize(0),
+        initialized(false),
         MEMORY_ALIGN((sizeof(void*) > 8) ? sizeof(void*) : 8) {
     mAlignedHeaderSize = this->MemoryAligned(sizeof(MemoryBHeader));
   }
@@ -76,11 +79,11 @@ class MemoryHandler {
   size_t Available();
 };
 
-#define USE_ARENA
+#define USE_ARENA_EX
 
 class MemoryPool {
  public:
-  MemoryPool(size_t bytes) { Initialize(bytes); };
+  MemoryPool(size_t bytes) { Initialize(bytes); }
   MemoryPool(const MemoryPool&) = delete;
   MemoryPool& operator=(const MemoryPool&) = delete;
   ~MemoryPool() {}
@@ -98,6 +101,8 @@ class MemoryPool {
  private:
   MemoryHandler memHandler;
   vector<char> memBuffer;
+  MemoryHandler memHandlerEx;
+  vector<char> memBufferEx;
   void Initialize(size_t bytes) {
     bytes += bytes / 1024;
     memBuffer.resize(bytes);
@@ -105,14 +110,36 @@ class MemoryPool {
   }
 
  public:
-
-
-  char* Allocate(size_t bytes) { return memHandler.Allocate(bytes); }
-  char* AllocateAligned(size_t bytes) {
-    return memHandler.AllocateAligned(bytes);
+  char* Allocate(size_t bytes) { 
+    if (memHandler.Available() >= bytes) {
+      return memHandler.Allocate(bytes);
+    } else {
+      if (!memHandlerEx.initialized) {
+        size_t bufferBytes = memHandler.MemoryAligned(bytes + memHandlerEx.mAlignedHeaderSize);
+        memBufferEx.resize(bufferBytes);
+        memHandlerEx.InitHeap(&memBufferEx[0], bufferBytes);
+      }
+      return memHandlerEx.Allocate(bytes);
+    }  
   }
-  size_t MemoryUsage() const { return memHandler.MemoryUsage(); }
+  char* AllocateAligned(size_t bytes) {
+    bytes = memHandler.MemoryAligned(bytes);
+    return Allocate(bytes);
+  }
+  size_t MemoryUsage() const { return memHandler.MemoryUsage() + memHandlerEx.MemoryUsage(); }
+#elif defined USE_ARENA_EX
+ private:
+  ArenaEx arenaEx_;
+
+ public:
+  void Initialize(size_t bytes) { arenaEx_.Initialize(bytes); }
+  char* Allocate(size_t bytes) { return arenaEx_.Allocate(bytes); }
+  char* AllocateAligned(size_t bytes) {
+    return arenaEx_.AllocateAligned(bytes);
+  }
+  size_t MemoryUsage() const { return arenaEx_.MemoryUsage(); }
 #endif
+
 };
 
 }  // namespace leveldb

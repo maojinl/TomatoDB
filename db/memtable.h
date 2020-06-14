@@ -10,7 +10,6 @@
 #include "db/dbformat.h"
 #include "db/skiplist.h"
 #include "leveldb/db.h"
-#include "util/arena.h"
 #include "util\memoryhandler.h"
 
 namespace leveldb {
@@ -79,7 +78,6 @@ class MemTable {
 
   KeyComparator comparator_;
   int refs_;
-  Arena arena_;
   MemoryPool memPool_;
   Table table_;
 };

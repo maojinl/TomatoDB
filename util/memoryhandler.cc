@@ -31,7 +31,7 @@ int MemoryHandler::InitHeap(void* iHeap, size_t Size) {
   a1.bh->mSize = Size;
   a1.bh->mpNext = a1.bh;
   a1.bh->mpPrev = a1.bh;
-
+  initialized = true;
   return ret;
 }
 
@@ -47,6 +47,8 @@ char* MemoryHandler::Allocate(size_t size, bool aligned) {
 
   if (aligned) {
     size = this->MemoryAligned(size + mAlignedHeaderSize);
+  } else {
+    size += mAlignedHeaderSize;
   }
 
   do {
@@ -74,6 +76,7 @@ char* MemoryHandler::Allocate(size_t size, bool aligned) {
 
   if (Min <= this->mAlignedHeaderSize) {
     pMin->mSize = 0 - pMin->mSize;
+    memory_usage_.fetch_add(size, std::memory_order_relaxed);
     return this->skip_header((char*)pMin);
   }
 
