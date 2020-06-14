@@ -481,7 +481,7 @@ class DBTest : public testing::Test {
     for (int i = 0; i < n; i++) {
       Put(small_key, "begin");
       Put(large_key, "end");
-      dbfull()->TEST_CompactMemTable();
+      dbfull()->TEST_CompactMemTableEx();
     }
   }
 
@@ -632,7 +632,7 @@ TEST_F(DBTest, GetFromImmutableLayer) {
 TEST_F(DBTest, GetFromVersions) {
   do {
     ASSERT_LEVELDB_OK(Put("foo", "v1"));
-    dbfull()->TEST_CompactMemTable();
+    dbfull()->TEST_CompactMemTableEx();
     ASSERT_EQ("v1", Get("foo"));
   } while (ChangeOptions());
 }
@@ -658,7 +658,7 @@ TEST_F(DBTest, GetSnapshot) {
       ASSERT_LEVELDB_OK(Put(key, "v2"));
       ASSERT_EQ("v2", Get(key));
       ASSERT_EQ("v1", Get(key, s1));
-      dbfull()->TEST_CompactMemTable();
+      dbfull()->TEST_CompactMemTableEx();
       ASSERT_EQ("v2", Get(key));
       ASSERT_EQ("v1", Get(key, s1));
       db_->ReleaseSnapshot(s1);
@@ -681,7 +681,7 @@ TEST_F(DBTest, GetIdenticalSnapshots) {
       ASSERT_EQ("v1", Get(key, s2));
       ASSERT_EQ("v1", Get(key, s3));
       db_->ReleaseSnapshot(s1);
-      dbfull()->TEST_CompactMemTable();
+      dbfull()->TEST_CompactMemTableEx();
       ASSERT_EQ("v2", Get(key));
       ASSERT_EQ("v1", Get(key, s2));
       db_->ReleaseSnapshot(s2);
@@ -704,7 +704,7 @@ TEST_F(DBTest, IterateOverEmptySnapshot) {
     ASSERT_TRUE(!iterator1->Valid());
     delete iterator1;
 
-    dbfull()->TEST_CompactMemTable();
+    dbfull()->TEST_CompactMemTableEx();
 
     Iterator* iterator2 = db_->NewIterator(read_options);
     iterator2->SeekToFirst();
@@ -723,9 +723,9 @@ TEST_F(DBTest, GetLevel0Ordering) {
     // one has a smaller "smallest" key.
     ASSERT_LEVELDB_OK(Put("bar", "b"));
     ASSERT_LEVELDB_OK(Put("foo", "v1"));
-    dbfull()->TEST_CompactMemTable();
+    dbfull()->TEST_CompactMemTableEx();
     ASSERT_LEVELDB_OK(Put("foo", "v2"));
-    dbfull()->TEST_CompactMemTable();
+    dbfull()->TEST_CompactMemTableEx();
     ASSERT_EQ("v2", Get("foo"));
   } while (ChangeOptions());
 }
@@ -737,7 +737,7 @@ TEST_F(DBTest, GetOrderedByLevels) {
     ASSERT_EQ("v1", Get("foo"));
     ASSERT_LEVELDB_OK(Put("foo", "v2"));
     ASSERT_EQ("v2", Get("foo"));
-    dbfull()->TEST_CompactMemTable();
+    dbfull()->TEST_CompactMemTableEx();
     ASSERT_EQ("v2", Get("foo"));
   } while (ChangeOptions());
 }
@@ -774,7 +774,7 @@ TEST_F(DBTest, GetEncountersEmptyLevel) {
       compaction_count++;
       Put("a", "begin");
       Put("z", "end");
-      dbfull()->TEST_CompactMemTable();
+      dbfull()->TEST_CompactMemTableEx();
     }
 
     // Step 2: clear level 1 if necessary.
@@ -1167,14 +1167,14 @@ TEST_F(DBTest, SparseMerge) {
     Put(key, value);
   }
   Put("C", "vc");
-  dbfull()->TEST_CompactMemTable();
+  dbfull()->TEST_CompactMemTableEx();
   dbfull()->TEST_CompactRange(0, nullptr, nullptr);
 
   // Make sparse update
   Put("A", "va2");
   Put("B100", "bvalue2");
   Put("C", "vc2");
-  dbfull()->TEST_CompactMemTable();
+  dbfull()->TEST_CompactMemTableEx();
 
   // Compactions should not cause us to create a situation where
   // a file overlaps too much data at the next level.
@@ -1273,7 +1273,7 @@ TEST_F(DBTest, ApproximateSizes_MixOfSmallAndLarge) {
 
     if (options.reuse_logs) {
       // Need to force a memtable compaction since recovery does not do so.
-      ASSERT_LEVELDB_OK(dbfull()->TEST_CompactMemTable());
+      ASSERT_LEVELDB_OK(dbfull()->TEST_CompactMemTableEx());
     }
 
     // Check sizes across recovery by reopening a few times
@@ -1361,7 +1361,7 @@ TEST_F(DBTest, HiddenValuesAreRemoved) {
     Put("foo", "tiny");
     Put("pastfoo2", "v2");  // Advance sequence number one more
 
-    ASSERT_LEVELDB_OK(dbfull()->TEST_CompactMemTable());
+    ASSERT_LEVELDB_OK(dbfull()->TEST_CompactMemTableEx());
     ASSERT_GT(NumTableFilesAtLevel(0), 0);
 
     ASSERT_EQ(big, Get("foo", snapshot));
@@ -1382,21 +1382,21 @@ TEST_F(DBTest, HiddenValuesAreRemoved) {
 
 TEST_F(DBTest, DeletionMarkers1) {
   Put("foo", "v1");
-  ASSERT_LEVELDB_OK(dbfull()->TEST_CompactMemTable());
+  ASSERT_LEVELDB_OK(dbfull()->TEST_CompactMemTableEx());
   const int last = config::kMaxMemCompactLevel;
   ASSERT_EQ(NumTableFilesAtLevel(last), 1);  // foo => v1 is now in last level
 
   // Place a table at level last-1 to prevent merging with preceding mutation
   Put("a", "begin");
   Put("z", "end");
-  dbfull()->TEST_CompactMemTable();
+  dbfull()->TEST_CompactMemTableEx();
   ASSERT_EQ(NumTableFilesAtLevel(last), 1);
   ASSERT_EQ(NumTableFilesAtLevel(last - 1), 1);
 
   Delete("foo");
   Put("foo", "v2");
   ASSERT_EQ(AllEntriesFor("foo"), "[ v2, DEL, v1 ]");
-  ASSERT_LEVELDB_OK(dbfull()->TEST_CompactMemTable());  // Moves to level last-2
+  ASSERT_LEVELDB_OK(dbfull()->TEST_CompactMemTableEx());  // Moves to level last-2
   ASSERT_EQ(AllEntriesFor("foo"), "[ v2, DEL, v1 ]");
   Slice z("z");
   dbfull()->TEST_CompactRange(last - 2, nullptr, &z);
@@ -1411,20 +1411,20 @@ TEST_F(DBTest, DeletionMarkers1) {
 
 TEST_F(DBTest, DeletionMarkers2) {
   Put("foo", "v1");
-  ASSERT_LEVELDB_OK(dbfull()->TEST_CompactMemTable());
+  ASSERT_LEVELDB_OK(dbfull()->TEST_CompactMemTableEx());
   const int last = config::kMaxMemCompactLevel;
   ASSERT_EQ(NumTableFilesAtLevel(last), 1);  // foo => v1 is now in last level
 
   // Place a table at level last-1 to prevent merging with preceding mutation
   Put("a", "begin");
   Put("z", "end");
-  dbfull()->TEST_CompactMemTable();
+  dbfull()->TEST_CompactMemTableEx();
   ASSERT_EQ(NumTableFilesAtLevel(last), 1);
   ASSERT_EQ(NumTableFilesAtLevel(last - 1), 1);
 
   Delete("foo");
   ASSERT_EQ(AllEntriesFor("foo"), "[ DEL, v1 ]");
-  ASSERT_LEVELDB_OK(dbfull()->TEST_CompactMemTable());  // Moves to level last-2
+  ASSERT_LEVELDB_OK(dbfull()->TEST_CompactMemTableEx());  // Moves to level last-2
   ASSERT_EQ(AllEntriesFor("foo"), "[ DEL, v1 ]");
   dbfull()->TEST_CompactRange(last - 2, nullptr, nullptr);
   // DEL kept: "last" file overlaps
@@ -1443,10 +1443,10 @@ TEST_F(DBTest, OverlapInLevel0) {
     // 0.
     ASSERT_LEVELDB_OK(Put("100", "v100"));
     ASSERT_LEVELDB_OK(Put("999", "v999"));
-    dbfull()->TEST_CompactMemTable();
+    dbfull()->TEST_CompactMemTableEx();
     ASSERT_LEVELDB_OK(Delete("100"));
     ASSERT_LEVELDB_OK(Delete("999"));
-    dbfull()->TEST_CompactMemTable();
+    dbfull()->TEST_CompactMemTableEx();
     ASSERT_EQ("0,1,1", FilesPerLevel());
 
     // Make files spanning the following ranges in level-0:
@@ -1455,11 +1455,11 @@ TEST_F(DBTest, OverlapInLevel0) {
     // Note that files are sorted by smallest key.
     ASSERT_LEVELDB_OK(Put("300", "v300"));
     ASSERT_LEVELDB_OK(Put("500", "v500"));
-    dbfull()->TEST_CompactMemTable();
+    dbfull()->TEST_CompactMemTableEx();
     ASSERT_LEVELDB_OK(Put("200", "v200"));
     ASSERT_LEVELDB_OK(Put("600", "v600"));
     ASSERT_LEVELDB_OK(Put("900", "v900"));
-    dbfull()->TEST_CompactMemTable();
+    dbfull()->TEST_CompactMemTableEx();
     ASSERT_EQ("2,1,1", FilesPerLevel());
 
     // Compact away the placeholder files we created initially
@@ -1471,7 +1471,7 @@ TEST_F(DBTest, OverlapInLevel0) {
     // not detect the overlap with level-0 files and would incorrectly place
     // the deletion in a deeper level.
     ASSERT_LEVELDB_OK(Delete("600"));
-    dbfull()->TEST_CompactMemTable();
+    dbfull()->TEST_CompactMemTableEx();
     ASSERT_EQ("3", FilesPerLevel());
     ASSERT_EQ("NOT_FOUND", Get("600"));
   } while (ChangeOptions());
@@ -1838,7 +1838,7 @@ TEST_F(DBTest, ManifestWriteError) {
     ASSERT_EQ("bar", Get("foo"));
 
     // Memtable compaction (will succeed)
-    dbfull()->TEST_CompactMemTable();
+    dbfull()->TEST_CompactMemTableEx();
     ASSERT_EQ("bar", Get("foo"));
     const int last = config::kMaxMemCompactLevel;
     ASSERT_EQ(NumTableFilesAtLevel(last), 1);  // foo=>bar is now in last level
@@ -1860,7 +1860,7 @@ TEST_F(DBTest, MissingSSTFile) {
   ASSERT_EQ("bar", Get("foo"));
 
   // Dump the memtable to disk.
-  dbfull()->TEST_CompactMemTable();
+  dbfull()->TEST_CompactMemTableEx();
   ASSERT_EQ("bar", Get("foo"));
 
   Close();
@@ -1877,7 +1877,7 @@ TEST_F(DBTest, StillReadSST) {
   ASSERT_EQ("bar", Get("foo"));
 
   // Dump the memtable to disk.
-  dbfull()->TEST_CompactMemTable();
+  dbfull()->TEST_CompactMemTableEx();
   ASSERT_EQ("bar", Get("foo"));
   Close();
   ASSERT_GT(RenameLDBToSST(), 0);
@@ -1916,7 +1916,7 @@ TEST_F(DBTest, BloomFilter) {
   for (int i = 0; i < N; i += 100) {
     ASSERT_LEVELDB_OK(Put(Key(i), Key(i)));
   }
-  dbfull()->TEST_CompactMemTable();
+  dbfull()->TEST_CompactMemTableEx();
 
   // Prevent auto compactions triggered by seeks
   env_->delay_data_sync_.store(true, std::memory_order_release);
