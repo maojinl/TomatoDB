@@ -72,7 +72,7 @@ class ArenaTMT {
     char* result = new char[size];
     blocks_.push_back(result);
     alloc_bytes_remaining_ = size;
-    alloc_ptr_ = &blocks_[0][0];
+    alloc_ptr_ = blocks_[0];
   };
 
  private:
