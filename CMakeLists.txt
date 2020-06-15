@@ -124,6 +124,7 @@ target_sources(leveldb
     "db/builder.h"
     "db/c.cc"
     "db/db_impl.cc"
+	"db/db_impl_tmt.cc"
     "db/db_impl.h"
     "db/db_iter.cc"
     "db/db_iter.h"
@@ -172,6 +173,7 @@ target_sources(leveldb
     "table/two_level_iterator.h"
     "util/arena.cc"
     "util/arena.h"
+	"util/arena_tmt.h"
     "util/memoryhandler.cc"
     "util/memoryhandler.h"
     "util/bloom.cc"
@@ -351,7 +353,7 @@ if(LEVELDB_BUILD_TESTS)
     leveldb_test("db/autocompact_test.cc")
     leveldb_test("db/corruption_test.cc")
     leveldb_test("db/db_test.cc")
-	leveldb_test("db/db_ex_test.cc")
+	leveldb_test("db/db_tmt_test.cc")
     leveldb_test("db/dbformat_test.cc")
     leveldb_test("db/filename_test.cc")
     leveldb_test("db/log_test.cc")

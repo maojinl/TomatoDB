@@ -71,6 +71,9 @@ class DBImpl : public DB {
   // Force current memtable contents to be compacted.
   Status TEST_CompactMemTable();
 
+  // Force current memtable contents to be compacted for new polling thread mode.
+  Status TEST_CompactMemTableEx();
+
   // Return an internal iterator over the current state of the database.
   // The keys of this iterator are internal keys (see format.h).
   // The returned iterator should be deleted when no longer needed.

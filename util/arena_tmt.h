@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 
-#ifndef STORAGE_LEVELDB_UTIL_ARENA_EX_H_
-#define STORAGE_LEVELDB_UTIL_ARENA_EX_H_
+#ifndef STORAGE_LEVELDB_UTIL_ARENA_TMT_H_
+#define STORAGE_LEVELDB_UTIL_ARENA_TMT_H_
 
 #include <atomic>
 #include <cassert>
@@ -13,18 +13,18 @@
 
 namespace leveldb {
 
-class ArenaEx {
+class ArenaTMT {
  public:
-  ArenaEx()
+  ArenaTMT()
       : alloc_ptr_(nullptr),
         alloc_bytes_remaining_(0),
         memory_usage_(0),
         MEMORY_ALIGN((sizeof(void*) > 8) ? sizeof(void*) : 8) {}
 
-  ArenaEx(const ArenaEx&) = delete;
-  ArenaEx& operator=(const ArenaEx&) = delete;
+  ArenaTMT(const ArenaTMT&) = delete;
+  ArenaTMT& operator=(const ArenaTMT&) = delete;
 
-  ~ArenaEx() {
+  ~ArenaTMT() {
     for (size_t i = 0; i < blocks_.size(); i++) {
       delete[] blocks_[i];
     }
@@ -93,4 +93,4 @@ class ArenaEx {
 };
 }  // namespace leveldb
 
-#endif  // STORAGE_LEVELDB_UTIL_ARENA_EX_H_
+#endif  // STORAGE_LEVELDB_UTIL_ARENA_TMT_H_

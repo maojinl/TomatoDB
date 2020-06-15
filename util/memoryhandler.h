@@ -12,7 +12,7 @@
 #include <xatomic.h>
 #include <atomic>
 #include "util\arena.h"
-#include "util\arena_ex.h"
+#include "util\arena_tmt.h"
 
 using namespace std;
 
@@ -77,7 +77,7 @@ class MemoryHandler {
   size_t Available();
 };
 
-#define USE_ARENA_EX
+#define USE_ARENA_TMT
 
 class MemoryPool {
  public:
@@ -125,17 +125,17 @@ class MemoryPool {
     return Allocate(bytes);
   }
   size_t MemoryUsage() const { return memHandler.MemoryUsage() + memHandlerEx.MemoryUsage(); }
-#elif defined USE_ARENA_EX
+#elif defined USE_ARENA_TMT
  private:
-  ArenaEx arenaEx_;
+  ArenaTMT arenaTmt_;
 
  public:
-  void Initialize(size_t bytes) { arenaEx_.Initialize(bytes); }
-  char* Allocate(size_t bytes) { return arenaEx_.Allocate(bytes); }
+  void Initialize(size_t bytes) { arenaTmt_.Initialize(bytes); }
+  char* Allocate(size_t bytes) { return arenaTmt_.Allocate(bytes); }
   char* AllocateAligned(size_t bytes) {
-    return arenaEx_.AllocateAligned(bytes);
+    return arenaTmt_.AllocateAligned(bytes);
   }
-  size_t MemoryUsage() const { return arenaEx_.MemoryUsage(); }
+  size_t MemoryUsage() const { return arenaTmt_.MemoryUsage(); }
 #endif
 
 };
