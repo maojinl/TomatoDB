@@ -31,7 +31,6 @@ int MemoryHandler::InitHeap(void* iHeap, size_t Size) {
   a1.bh->mSize = Size;
   a1.bh->mpNext = a1.bh;
   a1.bh->mpPrev = a1.bh;
-  initialized = true;
   return ret;
 }
 

@@ -47,7 +47,6 @@ class MemoryHandler {
   }
 
  public:
-  bool initialized;
   Sint64 mAlignedHeaderSize;
   MemoryHandler()
       : mReal(0),
@@ -57,7 +56,6 @@ class MemoryHandler {
         mBlocks(0),
         memory_usage_(0),
         mAllocBaseSize(0),
-        initialized(false),
         MEMORY_ALIGN((sizeof(void*) > 8) ? sizeof(void*) : 8) {
     mAlignedHeaderSize = this->MemoryAligned(sizeof(MemoryBHeader));
   }
