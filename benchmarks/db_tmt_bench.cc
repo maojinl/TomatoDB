@@ -18,6 +18,8 @@
 #include "util/mutexlock.h"
 #include "util/random.h"
 #include "util/testutil.h"
+#include "db/write_params.h"
+#include "db/db_impl.h"
 
 // Comma-separated list of operations to run in the specified order
 //   Actual benchmarks:
@@ -304,8 +306,13 @@ struct ThreadState {
   Random rand;  // Has different seeds for different threads
   Stats stats;
   SharedState* shared;
-
-  ThreadState(int index) : tid(index), rand(1000 + index), shared(nullptr) {}
+  WriteParams* params;
+  ThreadState(int index) : tid(index), rand(1000 + index), shared(nullptr), params(nullptr) {}
+  ~ThreadState() {
+    if (params != nullptr) {
+      delete params;
+    }
+  }
 };
 
 }  // namespace
@@ -582,6 +589,8 @@ class Benchmark {
     }
   }
 
+  DBImpl* dbfull() { return reinterpret_cast<DBImpl*>(db_); }
+
   void RunBenchmark(int n, Slice name,
                     void (Benchmark::*method)(ThreadState*)) {
     SharedState shared(n);
@@ -593,6 +602,7 @@ class Benchmark {
       arg[i].shared = &shared;
       arg[i].thread = new ThreadState(i);
       arg[i].thread->shared = &shared;
+      arg[i].thread->params = dbfull()->CreateParams();
       g_env->StartThread(ThreadBody, &arg[i]);
     }
 
@@ -702,6 +712,7 @@ class Benchmark {
       std::fprintf(stderr, "open error: %s\n", s.ToString().c_str());
       std::exit(1);
     }
+    dbfull()->PreWriteWorker();
   }
 
   void OpenBench(ThreadState* thread) {
@@ -724,7 +735,7 @@ class Benchmark {
     }
 
     RandomGenerator gen;
-    WriteBatch batch;
+    WriteBatch& batch = thread->params->batch;
     Status s;
     int64_t bytes = 0;
     for (int i = 0; i < num_; i += entries_per_batch_) {
@@ -737,7 +748,7 @@ class Benchmark {
         bytes += value_size_ + strlen(key);
         thread->stats.FinishedSingleOp();
       }
-      s = db_->Write(write_options_, &batch);
+      s = dbfull()->Write(*(thread->params));
       if (!s.ok()) {
         std::fprintf(stderr, "put error: %s\n", s.ToString().c_str());
         std::exit(1);
@@ -835,7 +846,7 @@ class Benchmark {
 
   void DoDelete(ThreadState* thread, bool seq) {
     RandomGenerator gen;
-    WriteBatch batch;
+    WriteBatch& batch = thread->params->batch;
     Status s;
     for (int i = 0; i < num_; i += entries_per_batch_) {
       batch.Clear();
@@ -843,10 +854,10 @@ class Benchmark {
         const int k = seq ? i + j : (thread->rand.Next() % FLAGS_num);
         char key[100];
         std::snprintf(key, sizeof(key), "%016d", k);
-        batch.Delete(key);
+        thread->params->batch.Delete(key);
         thread->stats.FinishedSingleOp();
       }
-      s = db_->Write(write_options_, &batch);
+      s = dbfull()->Write(*(thread->params));
       if (!s.ok()) {
         std::fprintf(stderr, "del error: %s\n", s.ToString().c_str());
         std::exit(1);
@@ -876,7 +887,8 @@ class Benchmark {
         const int k = thread->rand.Next() % FLAGS_num;
         char key[100];
         std::snprintf(key, sizeof(key), "%016d", k);
-        Status s = db_->Put(write_options_, key, gen.Generate(value_size_));
+        //Status s = db_->Put(write_options_, key, gen.Generate(value_size_));
+        Status s = dbfull()->Put(*(thread->params), key, gen.Generate(value_size_));
         if (!s.ok()) {
           std::fprintf(stderr, "put error: %s\n", s.ToString().c_str());
           std::exit(1);

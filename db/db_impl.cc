@@ -143,16 +143,16 @@ DBImpl::~DBImpl() {
   // Wait for background work to finish.
   mutex_.Lock();
   shutting_down_.store(true, std::memory_order_release);
-  
+
   while (background_compaction_scheduled_) {
     background_work_finished_signal_.Wait();
   }
-  mutex_.Unlock();
 
-  while (background_polling_thread_runing) { 
+  while (background_polling_thread_runing) {
     write_worker_idle_cv_.SignalAll();
     env_->SleepForMicroseconds(100);
   }
+  mutex_.Unlock();
 
   if (db_lock_ != nullptr) {
     env_->UnlockFile(db_lock_);

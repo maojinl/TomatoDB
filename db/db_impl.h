@@ -200,7 +200,7 @@ class DBImpl : public DB {
   uint32_t seed_ GUARDED_BY(mutex_);  // For sampling.
 
   // Queue of writers.
-  std::deque<Writer*> writers_ GUARDED_BY(mutex_);
+  std::deque<Writer*> writers_ GUARDED_BY(write_worker_mutex_);
   WriteBatch* tmp_batch_ GUARDED_BY(mutex_);
 
   SnapshotList snapshots_ GUARDED_BY(mutex_);

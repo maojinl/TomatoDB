@@ -42,8 +42,12 @@ Status DBImpl::Write(WriteParams& p) {
 }
 
 void DBImpl::PreWriteWorker() {
-  background_polling_thread_runing = true;
-  env_->StartThread(&DBImpl::WriteWorkerThread, this);
+  if (!background_polling_thread_runing) {
+    background_polling_thread_runing = true;
+    env_->StartThread(&DBImpl::WriteWorkerThread, this);
+  } else {
+    throw new _exception();
+  }
 }
 
 void DBImpl::WriteWorkerThread(void* db) {
