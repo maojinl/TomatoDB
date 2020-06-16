@@ -172,6 +172,10 @@ DBImpl::~DBImpl() {
   if (owns_cache_) {
     delete options_.block_cache;
   }
+
+  for (WriteParams* p : params_pool_) {
+    delete p;
+  }
 }
 
 Status DBImpl::NewDB() {
@@ -1167,11 +1171,6 @@ void DBImpl::RecordReadSample(Slice key) {
   if (versions_->current()->RecordReadSample(key)) {
     MaybeScheduleCompaction();
   }
-}
-
-WriteParams* DBImpl::CreateParams() {
-  WriteParams* p = new WriteParams(&(this->write_worker_mutex_));
-  return p;
 }
 
 const Snapshot* DBImpl::GetSnapshot() {

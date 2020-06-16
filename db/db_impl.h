@@ -226,6 +226,8 @@ class DBImpl : public DB {
   port::Mutex write_worker_mutex_;
 
   port::CondVar write_worker_idle_cv_ GUARDED_BY(write_worker_mutex_);
+
+  std::vector<WriteParams*> params_pool_ GUARDED_BY(mutex_);
 };
 
 // Sanitize db options.  The caller should delete result.info_log if

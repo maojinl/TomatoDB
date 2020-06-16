@@ -243,7 +243,6 @@ class DBTest : public testing::Test {
     dbname_ = testing::TempDir() + "db_test";
     DestroyDB(dbname_, Options());
     db_ = nullptr;
-    params = nullptr;
     Reopen();
   }
 
@@ -252,7 +251,6 @@ class DBTest : public testing::Test {
     DestroyDB(dbname_, Options());
     delete env_;
     delete filter_policy_;
-    delete params;
   }
 
   // Switch to a fresh database with the next option configuration to
@@ -319,7 +317,6 @@ class DBTest : public testing::Test {
 
     Status s = DBImpl::Open(opts, dbname_, &db_);
     if (s.ok()) {
-      delete params;
       params = dbfull()->CreateParams();
       dbfull()->PreWriteWorker();
     }
@@ -1984,33 +1981,32 @@ static void MTThreadBody(void* arg) {
     char keybuf[20];
     std::snprintf(keybuf, sizeof(keybuf), "%016d", key);
 
-    if (rnd.OneIn(2)) {
+    //if (rnd.OneIn(2)) {
       // Write values of the form <key, my id, counter>.
       // We add some padding for force compactions.
       std::snprintf(valbuf, sizeof(valbuf), "%d.%d.%-1000d", key, id,
                     static_cast<int>(counter));
       //ASSERT_LEVELDB_OK(test->Put(WriteOptions(), Slice(keybuf), Slice(valbuf)));
       ASSERT_LEVELDB_OK(pDb->Put(*params, Slice(keybuf), Slice(valbuf)));
-    } else {
-      // Read a value and verify that it matches the pattern written above.
-      Status s = db->Get(ReadOptions(), Slice(keybuf), &value);
-      if (s.IsNotFound()) {
-        // Key has not yet been written
-      } else {
-        // Check that the writer thread counter is >= the counter in the value
-        ASSERT_LEVELDB_OK(s);
-        int k, w, c;
-        ASSERT_EQ(3, sscanf(value.c_str(), "%d.%d.%d", &k, &w, &c)) << value;
-        ASSERT_EQ(k, key);
-        ASSERT_GE(w, 0);
-        ASSERT_LT(w, kNumThreads);
-        ASSERT_LE(c, t->state->counter[w].load(std::memory_order_acquire));
-      }
-    }
+    //} else {
+    //  // Read a value and verify that it matches the pattern written above.
+    //  Status s = db->Get(ReadOptions(), Slice(keybuf), &value);
+    //  if (s.IsNotFound()) {
+    //    // Key has not yet been written
+    //  } else {
+    //    // Check that the writer thread counter is >= the counter in the value
+    //    ASSERT_LEVELDB_OK(s);
+    //    int k, w, c;
+    //    ASSERT_EQ(3, sscanf(value.c_str(), "%d.%d.%d", &k, &w, &c)) << value;
+    //    ASSERT_EQ(k, key);
+    //    ASSERT_GE(w, 0);
+    //    ASSERT_LT(w, kNumThreads);
+    //    ASSERT_LE(c, t->state->counter[w].load(std::memory_order_acquire));
+    //  }
+    //}
     counter++;
   }
   t->state->thread_done[id].store(true, std::memory_order_release);
-  delete params;
   std::fprintf(stderr, "... stopping thread %d after %d ops\n", id, counter);
 }
 
@@ -2252,7 +2248,6 @@ TEST_F(DBTest, Randomized) {
         ASSERT_LEVELDB_OK(model.Write(WriteOptions(), &b));
         //ASSERT_LEVELDB_OK(db_->Write(WriteOptions(), &b));
         ASSERT_LEVELDB_OK(pDb->Write(*params1));
-        delete params1;
       }
 
       if ((step % 100) == 0) {

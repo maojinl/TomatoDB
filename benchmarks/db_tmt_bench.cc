@@ -308,11 +308,7 @@ struct ThreadState {
   SharedState* shared;
   WriteParams* params;
   ThreadState(int index) : tid(index), rand(1000 + index), shared(nullptr), params(nullptr) {}
-  ~ThreadState() {
-    if (params != nullptr) {
-      delete params;
-    }
-  }
+  ~ThreadState() {}
 };
 
 }  // namespace
@@ -735,20 +731,22 @@ class Benchmark {
     }
 
     RandomGenerator gen;
-    WriteBatch& batch = thread->params->batch;
+    //WriteBatch& batch = thread->params->batch;
     Status s;
     int64_t bytes = 0;
+    DBImpl* pDb = dbfull();
     for (int i = 0; i < num_; i += entries_per_batch_) {
-      batch.Clear();
+      thread->params->ClearParams();
       for (int j = 0; j < entries_per_batch_; j++) {
         const int k = seq ? i + j : (thread->rand.Next() % FLAGS_num);
         char key[100];
         std::snprintf(key, sizeof(key), "%016d", k);
-        batch.Put(key, gen.Generate(value_size_));
+        thread->params->batch.Put(key, gen.Generate(value_size_));
         bytes += value_size_ + strlen(key);
         thread->stats.FinishedSingleOp();
       }
-      s = dbfull()->Write(*(thread->params));
+      s = pDb->Write(*(thread->params));
+      //s = db_->Write(write_options_, &batch);
       if (!s.ok()) {
         std::fprintf(stderr, "put error: %s\n", s.ToString().c_str());
         std::exit(1);

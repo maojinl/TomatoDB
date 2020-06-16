@@ -9,6 +9,14 @@
 
 
 namespace leveldb {
+
+WriteParams* DBImpl::CreateParams() {
+  MutexLock l(&mutex_);
+  WriteParams* p = new WriteParams(&(this->write_worker_mutex_));
+  params_pool_.push_back(p);
+  return p;
+}
+
 Status DBImpl::Put(WriteParams& p, const Slice& key, const Slice& val) {
   p.ClearParams();
   p.PreparePutParams(key, val);
@@ -35,7 +43,7 @@ Status DBImpl::Write(WriteParams& p) {
     write_worker_idle_cv_.Signal();
   }
   writers_.push_back(&(p.writer));
-  while (!p.writer.done) {
+  if (!p.writer.done) {
     p.writer.cv.Wait();
   }
   return p.writer.status;
@@ -130,9 +138,9 @@ void DBImpl::WriteWorker() {
 }
 
 Status DBImpl::TEST_CompactMemTableEx() {
-  WriteParams* p = CreateParams();
-  p->writer.batch = nullptr;
-  Status s = Write(*p);
+  WriteParams param(&(this->write_worker_mutex_));
+  param.writer.batch = nullptr;
+  Status s = Write(param);
   if (s.ok()) {
     // Wait until the compaction completes
     MutexLock l(&mutex_);
@@ -143,7 +151,6 @@ Status DBImpl::TEST_CompactMemTableEx() {
       s = bg_error_;
     }
   }
-  delete p;
   return s;
 }
 
