@@ -68,7 +68,7 @@ static int FLAGS_num = 1000000;
 static int FLAGS_reads = -1;
 
 // Number of concurrent threads to run.
-static int FLAGS_threads = 1;
+static int FLAGS_threads = 4;
 
 // Size of each value
 static int FLAGS_value_size = 100;
@@ -599,6 +599,7 @@ class Benchmark {
       arg[i].thread = new ThreadState(i);
       arg[i].thread->shared = &shared;
       arg[i].thread->params = dbfull()->CreateParams();
+      arg[i].thread->params->options = write_options_;
       g_env->StartThread(ThreadBody, &arg[i]);
     }
 
@@ -735,6 +736,7 @@ class Benchmark {
     Status s;
     int64_t bytes = 0;
     DBImpl* pDb = dbfull();
+    thread->params->PrepareParams();
     for (int i = 0; i < num_; i += entries_per_batch_) {
       thread->params->ClearParams();
       for (int j = 0; j < entries_per_batch_; j++) {
@@ -847,7 +849,7 @@ class Benchmark {
     WriteBatch& batch = thread->params->batch;
     Status s;
     for (int i = 0; i < num_; i += entries_per_batch_) {
-      batch.Clear();
+      thread->params->ClearParams();
       for (int j = 0; j < entries_per_batch_; j++) {
         const int k = seq ? i + j : (thread->rand.Next() % FLAGS_num);
         char key[100];

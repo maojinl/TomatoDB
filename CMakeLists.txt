@@ -291,6 +291,19 @@ add_executable(leveldbutil
 )
 target_link_libraries(leveldbutil leveldb)
 
+add_executable(tomatodbserver "")
+target_sources(tomatodbserver
+  PRIVATE
+    "third_party/json/single_include/nlohmann/json.hpp"
+    "server/main.cc"
+)
+target_link_libraries(tomatodbserver leveldb)
+target_compile_definitions(tomatodbserver
+  PRIVATE
+    # Used by port/port.h.
+    ${LEVELDB_PLATFORM_NAME}=1
+)
+
 if(LEVELDB_BUILD_TESTS)
   enable_testing()
 
@@ -469,6 +482,7 @@ if(LEVELDB_INSTALL)
       "${LEVELDB_PUBLIC_INCLUDE_DIR}/status.h"
       "${LEVELDB_PUBLIC_INCLUDE_DIR}/table_builder.h"
       "${LEVELDB_PUBLIC_INCLUDE_DIR}/table.h"
+      "${LEVELDB_PUBLIC_INCLUDE_DIR}/write_params.h"
       "${LEVELDB_PUBLIC_INCLUDE_DIR}/write_batch.h"
     DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/leveldb"
   )

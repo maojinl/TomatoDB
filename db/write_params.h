@@ -35,7 +35,9 @@ class LEVELDB_EXPORT WriteParams {
   // Intentionally copyable.
   WriteParams(const WriteParams&) = delete;
   WriteParams& operator=(const WriteParams&) = delete;
-  WriteParams(port::Mutex* mu) : batch(), options(), writer(mu){};
+  WriteParams(port::Mutex* mu) : batch(), options(), writer(mu) {
+    writer.batch = &batch;
+  };
   ~WriteParams() = default;
 
   WriteBatch batch;
@@ -44,14 +46,15 @@ class LEVELDB_EXPORT WriteParams {
   void PreparePutParams(const Slice& key,
                         const Slice& value) {
     batch.Put(key, value);
-    writer.batch = &batch;
-    writer.sync = options.sync;
-    writer.done = false;
+    PrepareParams();
   };
 
   void PrepareDeleteParams(const Slice& key) {
     batch.Delete(key);
-    writer.batch = &batch;
+    PrepareParams();
+  };
+
+  void PrepareParams() {
     writer.sync = options.sync;
     writer.done = false;
   };

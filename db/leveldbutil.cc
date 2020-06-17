@@ -7,6 +7,7 @@
 #include "leveldb/dumpfile.h"
 #include "leveldb/env.h"
 #include "leveldb/status.h"
+#include "db/db_impl.h"
 
 namespace leveldb {
 namespace {
@@ -46,6 +47,17 @@ static void Usage() {
 }
 
 int main(int argc, char** argv) {
+
+  //    std::string dbname = "c://tomato_db_test//tomatodb";
+  //DestroyDB(dbname, Options());
+
+  //DB* db = nullptr;
+  //Options opts;
+  //opts.create_if_missing = true;
+  //Status s = DB::Open(opts, dbname, &db);
+  //assert(s.ok());
+  //DestroyDB(dbname, Options());
+
   leveldb::Env* env = leveldb::Env::Default();
   bool ok = true;
   if (argc < 2) {

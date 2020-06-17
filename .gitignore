@@ -35,5 +35,6 @@
 build/
 lib/
 third_party/googletest/
+third_party/json/
 .vs/
 
