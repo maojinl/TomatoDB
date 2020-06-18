@@ -197,7 +197,7 @@ JSFResult JSFServerSocketsMgr::SocketsPoll_Platform_Targeted(Sint32& retSelect, 
 	{
 		JSFSocketWrapper* pSockW = *ite;
 		pSockW->mRevents = 0;
-		RawSocket socket = pSockW->GetSocket().GetRawSocket();
+		RawSocket& socket = pSockW->GetSocket().GetRawSocket();
 		if (JSFSOCK_FD_ISSET(socket, &Rmask)) {
 			pSockW->mRevents |= JSFSOCK_POLLIN;
 		}

@@ -119,7 +119,7 @@ public:
 	Uint16 GetRemotePort();
 	void SetRemoteIPAndPort();
 	Sint32 SetSocketOption(int optLevel, int optName, char* optVal, int optLen);
-	RawSocket GetRawSocket();
+	RawSocket& GetRawSocket();
 	void SetStatusBit(bool enabled, Uint32 statusBit);
 	bool CheckStatusBit(Uint32 statusBit);
 private:

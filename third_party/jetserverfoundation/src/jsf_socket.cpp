@@ -547,7 +547,7 @@ bool JSFSocket::CheckStatusBit(Uint32 statusBit)
 	return ret;
 }
 
-RawSocket JSFSocket::GetRawSocket()
+RawSocket& JSFSocket::GetRawSocket()
 {
 	return mSocket;
 }
