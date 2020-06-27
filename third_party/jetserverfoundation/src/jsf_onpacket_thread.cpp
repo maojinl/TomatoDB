@@ -44,6 +44,7 @@ Uint32 JSFOnPacketThread::Run()
 		mPacketQueueMutex.Lock();
 		mPacketQueue.pop_front();
 		mPacketQueueMutex.Unlock();
+        delete pPacket;
 	}
 	return 0;
 }

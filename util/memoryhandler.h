@@ -77,7 +77,7 @@ class MemoryHandler {
   size_t Available();
 };
 
-#define USE_ARENA_TMT
+#define USE_ARENA
 
 class MemoryPool {
  public:

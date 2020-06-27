@@ -151,7 +151,6 @@ target_sources(leveldb
     "db/version_set.h"
     "db/write_batch_internal.h"
     "db/write_batch.cc"
-    "db/write_params.h"
     "port/port_stdcxx.h"
     "port/port.h"
     "port/thread_annotations.h"
@@ -211,6 +210,7 @@ target_sources(leveldb
     "${LEVELDB_PUBLIC_INCLUDE_DIR}/status.h"
     "${LEVELDB_PUBLIC_INCLUDE_DIR}/table_builder.h"
     "${LEVELDB_PUBLIC_INCLUDE_DIR}/table.h"
+    "${LEVELDB_PUBLIC_INCLUDE_DIR}/write_params.h"
     "${LEVELDB_PUBLIC_INCLUDE_DIR}/write_batch.h"
 )
 
@@ -290,6 +290,12 @@ add_executable(leveldbutil
   "db/leveldbutil.cc"
 )
 target_link_libraries(leveldbutil leveldb)
+target_compile_definitions(leveldbutil
+  PRIVATE
+    # Used by port/port.h.
+    ${LEVELDB_PLATFORM_NAME}=1
+)
+
 
 add_executable(tomatodbserver "")
 target_sources(tomatodbserver

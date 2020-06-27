@@ -18,7 +18,7 @@
 #include "util/mutexlock.h"
 #include "util/random.h"
 #include "util/testutil.h"
-#include "db/write_params.h"
+#include "leveldb/write_params.h"
 #include "db/db_impl.h"
 
 // Comma-separated list of operations to run in the specified order

@@ -32,7 +32,6 @@ class LEVELDB_EXPORT WriteParams {
   friend class DBImpl;
   WriteParams() = default;
 
-  // Intentionally copyable.
   WriteParams(const WriteParams&) = delete;
   WriteParams& operator=(const WriteParams&) = delete;
   WriteParams(port::Mutex* mu) : batch(), options(), writer(mu) {
