@@ -18,7 +18,7 @@ TmtDBImpl::~TmtDBImpl() {}
 
 void TmtDBImpl::InitializeWritersPool(int threads) {
   for (int i = 0; i < threads; i++) {
-    Writer* wp = new Writer(&writers_queue_mutex_);
+    Writer* wp = new Writer(&mutex_);
     writers.push_back(wp);
   }
   return;
@@ -30,26 +30,22 @@ Status TmtDBImpl::WriteEx(const WriteOptions& options, WriteBatch* updates, int 
   wp->sync = options.sync;
   wp->done = false;
 
-  writers_queue_mutex_.Lock();
+  MutexLock l(&mutex_);
   writers_.push_back(wp);
   while (!wp->done && wp != writers_.front()) {
     wp->cv.Wait();
   }
   if (wp->done) {
-    writers_queue_mutex_.Unlock();
+
     return wp->status;
   }
-  writers_queue_mutex_.Unlock();
 
   // May temporarily unlock and wait.
-  mutex_.Lock();
   Status status = MakeRoomForWrite(updates == nullptr);
   uint64_t last_sequence = versions_->LastSequence();
   Writer* last_writer = wp;
   if (status.ok() && updates != nullptr) {  // nullptr batch is for compactions
-    writers_queue_mutex_.Lock();
     WriteBatch* write_batch = BuildBatchGroup(&last_writer);
-    writers_queue_mutex_.Unlock();
     WriteBatchInternal::SetSequence(write_batch, last_sequence + 1);
     last_sequence += WriteBatchInternal::Count(write_batch);
 
@@ -82,9 +78,7 @@ Status TmtDBImpl::WriteEx(const WriteOptions& options, WriteBatch* updates, int 
 
     versions_->SetLastSequence(last_sequence);
   }
-  mutex_.Unlock();
 
-  writers_queue_mutex_.Lock();
   while (true) {
     Writer* ready = writers_.front();
     writers_.pop_front();
@@ -100,8 +94,6 @@ Status TmtDBImpl::WriteEx(const WriteOptions& options, WriteBatch* updates, int 
   if (!writers_.empty()) {
     writers_.front()->cv.Signal();
   }
-  writers_queue_mutex_.Unlock();
-
   return status;
 }
 
