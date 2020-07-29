@@ -18,8 +18,8 @@
 #include "util/mutexlock.h"
 #include "util/random.h"
 #include "util/testutil.h"
-#include "leveldb/write_params.h"
 #include "db/db_impl.h"
+#include "db/db_impl_tmt.h"
 
 // Comma-separated list of operations to run in the specified order
 //   Actual benchmarks:
@@ -113,8 +113,9 @@ static bool FLAGS_reuse_logs = false;
 
 // Use the db with the following name.
 static const char* FLAGS_db = nullptr;
+using namespace leveldb;
 
-namespace leveldb {
+namespace tomatodb {
 
 namespace {
 leveldb::Env* g_env = nullptr;
@@ -306,8 +307,9 @@ struct ThreadState {
   Random rand;  // Has different seeds for different threads
   Stats stats;
   SharedState* shared;
-  WriteParams* params;
-  ThreadState(int index) : tid(index), rand(1000 + index), shared(nullptr), params(nullptr) {}
+  WriteBatch wBatch;
+  ThreadState(int index)
+      : tid(index), rand(1000 + index), shared(nullptr), wBatch() {}
   ~ThreadState() {}
 };
 
@@ -585,7 +587,7 @@ class Benchmark {
     }
   }
 
-  DBImpl* dbfull() { return reinterpret_cast<DBImpl*>(db_); }
+  TmtDBImpl* dbfull() { return reinterpret_cast<TmtDBImpl*>(db_); }
 
   void RunBenchmark(int n, Slice name,
                     void (Benchmark::*method)(ThreadState*)) {
@@ -598,8 +600,6 @@ class Benchmark {
       arg[i].shared = &shared;
       arg[i].thread = new ThreadState(i);
       arg[i].thread->shared = &shared;
-      arg[i].thread->params = dbfull()->CreateParams();
-      arg[i].thread->params->options = write_options_;
       g_env->StartThread(ThreadBody, &arg[i]);
     }
 
@@ -704,12 +704,11 @@ class Benchmark {
     options.max_open_files = FLAGS_open_files;
     options.filter_policy = filter_policy_;
     options.reuse_logs = FLAGS_reuse_logs;
-    Status s = DB::Open(options, FLAGS_db, &db_);
+    Status s = TmtDBImpl::Open(FLAGS_threads, options, FLAGS_db, &db_);
     if (!s.ok()) {
       std::fprintf(stderr, "open error: %s\n", s.ToString().c_str());
       std::exit(1);
     }
-    dbfull()->PreWriteWorker();
   }
 
   void OpenBench(ThreadState* thread) {
@@ -735,19 +734,18 @@ class Benchmark {
     //WriteBatch& batch = thread->params->batch;
     Status s;
     int64_t bytes = 0;
-    DBImpl* pDb = dbfull();
-    thread->params->PrepareParams();
+    TmtDBImpl* pDb = dbfull();
+    WriteOptions wOptions;
     for (int i = 0; i < num_; i += entries_per_batch_) {
-      thread->params->ClearParams();
       for (int j = 0; j < entries_per_batch_; j++) {
         const int k = seq ? i + j : (thread->rand.Next() % FLAGS_num);
         char key[100];
         std::snprintf(key, sizeof(key), "%016d", k);
-        thread->params->batch.Put(key, gen.Generate(value_size_));
+        thread->wBatch.Put(key, gen.Generate(value_size_));
         bytes += value_size_ + strlen(key);
         thread->stats.FinishedSingleOp();
       }
-      s = pDb->Write(*(thread->params));
+      s = pDb->WriteEx(wOptions, &(thread->wBatch), thread->tid);
       //s = db_->Write(write_options_, &batch);
       if (!s.ok()) {
         std::fprintf(stderr, "put error: %s\n", s.ToString().c_str());
@@ -846,18 +844,18 @@ class Benchmark {
 
   void DoDelete(ThreadState* thread, bool seq) {
     RandomGenerator gen;
-    WriteBatch& batch = thread->params->batch;
+    WriteBatch& batch = thread->wBatch;
     Status s;
+    WriteOptions wOptions;
     for (int i = 0; i < num_; i += entries_per_batch_) {
-      thread->params->ClearParams();
       for (int j = 0; j < entries_per_batch_; j++) {
         const int k = seq ? i + j : (thread->rand.Next() % FLAGS_num);
         char key[100];
         std::snprintf(key, sizeof(key), "%016d", k);
-        thread->params->batch.Delete(key);
+        batch.Delete(key);
         thread->stats.FinishedSingleOp();
       }
-      s = dbfull()->Write(*(thread->params));
+      s = dbfull()->WriteEx(wOptions, &(thread->wBatch), thread->tid);
       if (!s.ok()) {
         std::fprintf(stderr, "del error: %s\n", s.ToString().c_str());
         std::exit(1);
@@ -870,6 +868,7 @@ class Benchmark {
   void DeleteRandom(ThreadState* thread) { DoDelete(thread, false); }
 
   void ReadWhileWriting(ThreadState* thread) {
+    WriteOptions wOptions;
     if (thread->tid > 0) {
       ReadRandom(thread);
     } else {
@@ -888,7 +887,8 @@ class Benchmark {
         char key[100];
         std::snprintf(key, sizeof(key), "%016d", k);
         //Status s = db_->Put(write_options_, key, gen.Generate(value_size_));
-        Status s = dbfull()->Put(*(thread->params), key, gen.Generate(value_size_));
+        thread->wBatch.Put(key, gen.Generate(value_size_));
+        Status s = dbfull()->WriteEx(wOptions, &(thread->wBatch), thread->tid);
         if (!s.ok()) {
           std::fprintf(stderr, "put error: %s\n", s.ToString().c_str());
           std::exit(1);
@@ -987,16 +987,16 @@ int main(int argc, char** argv) {
     }
   }
 
-  leveldb::g_env = leveldb::Env::Default();
+  tomatodb::g_env = leveldb::Env::Default();
 
   // Choose a location for the test database if none given with --db=<path>
   if (FLAGS_db == nullptr) {
-    leveldb::g_env->GetTestDirectory(&default_db_path);
+    tomatodb::g_env->GetTestDirectory(&default_db_path);
     default_db_path += "/dbbench";
     FLAGS_db = default_db_path.c_str();
   }
 
-  leveldb::Benchmark benchmark;
+  tomatodb::Benchmark benchmark;
   benchmark.Run();
   return 0;
 }
