@@ -1,21 +1,21 @@
 // Copyright (c) 2011 The LevelDB Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
-
-#include "leveldb/db.h"
-
 #include <atomic>
 #include <string>
-
-#include "gtest/gtest.h"
 #include "db/db_impl.h"
+#include "db/db_impl_tmt.h"
 #include "db/filename.h"
 #include "db/version_set.h"
 #include "db/write_batch_internal.h"
+
 #include "leveldb/cache.h"
+#include "leveldb/db.h"
+
 #include "leveldb/env.h"
 #include "leveldb/filter_policy.h"
 #include "leveldb/table.h"
+
 #include "port/port.h"
 #include "port/thread_annotations.h"
 #include "util/hash.h"
@@ -23,7 +23,15 @@
 #include "util/mutexlock.h"
 #include "util/testutil.h"
 
-namespace leveldb {
+#include "gtest/gtest.h"
+
+using namespace leveldb;
+
+namespace tomatodb {
+
+static const int kNumThreads = 4;
+static const int kTestSeconds = 10;
+static const int kNumKeys = 1000;
 
 static std::string RandomString(Random* rnd, int len) {
   std::string r;
@@ -234,9 +242,7 @@ class DBTest : public testing::Test {
 
   Options last_options_;
 
-  //typedef typename DBImpl::WriteParams WriteParams;
-
-  WriteParams* params;
+  WriteBatch writeBatch;
 
   DBTest() : env_(new SpecialEnv(Env::Default())), option_config_(kDefault) {
     filter_policy_ = NewBloomFilterPolicy(10);
@@ -285,7 +291,7 @@ class DBTest : public testing::Test {
     return options;
   }
 
-  DBImpl* dbfull() { return reinterpret_cast<DBImpl*>(db_); }
+  TmtDBImpl* dbfull() { return reinterpret_cast<TmtDBImpl*>(db_); }
 
   void Reopen(Options* options = nullptr) {
     ASSERT_LEVELDB_OK(TryReopen(options));
@@ -315,29 +321,19 @@ class DBTest : public testing::Test {
     }
     last_options_ = opts;
 
-    Status s = DBImpl::Open(opts, dbname_, &db_);
-    if (s.ok()) {
-      params = dbfull()->CreateParams();
-      dbfull()->PreWriteWorker();
-    }
-
-    return s;
+    return TmtDBImpl::Open(kNumThreads, opts, dbname_, &db_);
   }
 
   Status Put(const std::string& k, const std::string& v) {
-    Status s = dbfull()->Put(*params, k, v);
-    if (!s.ok()) {
-      std::cout << "error 1!" << s.ToString() << std::endl;
-    }
-    return s;
+    writeBatch.Clear();
+    writeBatch.Put(k, v);
+    return dbfull()->WriteEx(WriteOptions(), &writeBatch, 0);
   }
 
-  Status Delete(const std::string& k) { 
-    Status s = dbfull()->Delete(*params, k); 
-    if (!s.ok()) {
-      std::cout << "error 2! " << s.ToString() << std::endl;
-    }
-    return s;
+  Status Delete(const std::string& k) {
+    writeBatch.Clear();
+    writeBatch.Delete(k);
+    return dbfull()->WriteEx(WriteOptions(), &writeBatch, 0);  
   }
 
   std::string Get(const std::string& k, const Snapshot* snapshot = nullptr) {
@@ -478,7 +474,7 @@ class DBTest : public testing::Test {
     for (int i = 0; i < n; i++) {
       Put(small_key, "begin");
       Put(large_key, "end");
-      dbfull()->TEST_CompactMemTableEx();
+      dbfull()->TEST_CompactMemTable();
     }
   }
 
@@ -597,11 +593,11 @@ TEST_F(DBTest, ReadWrite) {
 
 TEST_F(DBTest, PutDeleteGet) {
   do {
-    ASSERT_LEVELDB_OK(Put("foo", "v1"));
+    ASSERT_LEVELDB_OK(db_->Put(WriteOptions(), "foo", "v1"));
     ASSERT_EQ("v1", Get("foo"));
-    ASSERT_LEVELDB_OK(Put( "foo", "v2"));
+    ASSERT_LEVELDB_OK(db_->Put(WriteOptions(), "foo", "v2"));
     ASSERT_EQ("v2", Get("foo"));
-    ASSERT_LEVELDB_OK(Delete("foo"));
+    ASSERT_LEVELDB_OK(db_->Delete(WriteOptions(), "foo"));
     ASSERT_EQ("NOT_FOUND", Get("foo"));
   } while (ChangeOptions());
 }
@@ -629,7 +625,7 @@ TEST_F(DBTest, GetFromImmutableLayer) {
 TEST_F(DBTest, GetFromVersions) {
   do {
     ASSERT_LEVELDB_OK(Put("foo", "v1"));
-    dbfull()->TEST_CompactMemTableEx();
+    dbfull()->TEST_CompactMemTable();
     ASSERT_EQ("v1", Get("foo"));
   } while (ChangeOptions());
 }
@@ -655,7 +651,7 @@ TEST_F(DBTest, GetSnapshot) {
       ASSERT_LEVELDB_OK(Put(key, "v2"));
       ASSERT_EQ("v2", Get(key));
       ASSERT_EQ("v1", Get(key, s1));
-      dbfull()->TEST_CompactMemTableEx();
+      dbfull()->TEST_CompactMemTable();
       ASSERT_EQ("v2", Get(key));
       ASSERT_EQ("v1", Get(key, s1));
       db_->ReleaseSnapshot(s1);
@@ -678,7 +674,7 @@ TEST_F(DBTest, GetIdenticalSnapshots) {
       ASSERT_EQ("v1", Get(key, s2));
       ASSERT_EQ("v1", Get(key, s3));
       db_->ReleaseSnapshot(s1);
-      dbfull()->TEST_CompactMemTableEx();
+      dbfull()->TEST_CompactMemTable();
       ASSERT_EQ("v2", Get(key));
       ASSERT_EQ("v1", Get(key, s2));
       db_->ReleaseSnapshot(s2);
@@ -701,7 +697,7 @@ TEST_F(DBTest, IterateOverEmptySnapshot) {
     ASSERT_TRUE(!iterator1->Valid());
     delete iterator1;
 
-    dbfull()->TEST_CompactMemTableEx();
+    dbfull()->TEST_CompactMemTable();
 
     Iterator* iterator2 = db_->NewIterator(read_options);
     iterator2->SeekToFirst();
@@ -720,9 +716,9 @@ TEST_F(DBTest, GetLevel0Ordering) {
     // one has a smaller "smallest" key.
     ASSERT_LEVELDB_OK(Put("bar", "b"));
     ASSERT_LEVELDB_OK(Put("foo", "v1"));
-    dbfull()->TEST_CompactMemTableEx();
+    dbfull()->TEST_CompactMemTable();
     ASSERT_LEVELDB_OK(Put("foo", "v2"));
-    dbfull()->TEST_CompactMemTableEx();
+    dbfull()->TEST_CompactMemTable();
     ASSERT_EQ("v2", Get("foo"));
   } while (ChangeOptions());
 }
@@ -734,7 +730,7 @@ TEST_F(DBTest, GetOrderedByLevels) {
     ASSERT_EQ("v1", Get("foo"));
     ASSERT_LEVELDB_OK(Put("foo", "v2"));
     ASSERT_EQ("v2", Get("foo"));
-    dbfull()->TEST_CompactMemTableEx();
+    dbfull()->TEST_CompactMemTable();
     ASSERT_EQ("v2", Get("foo"));
   } while (ChangeOptions());
 }
@@ -771,7 +767,7 @@ TEST_F(DBTest, GetEncountersEmptyLevel) {
       compaction_count++;
       Put("a", "begin");
       Put("z", "end");
-      dbfull()->TEST_CompactMemTableEx();
+      dbfull()->TEST_CompactMemTable();
     }
 
     // Step 2: clear level 1 if necessary.
@@ -1164,14 +1160,14 @@ TEST_F(DBTest, SparseMerge) {
     Put(key, value);
   }
   Put("C", "vc");
-  dbfull()->TEST_CompactMemTableEx();
+  dbfull()->TEST_CompactMemTable();
   dbfull()->TEST_CompactRange(0, nullptr, nullptr);
 
   // Make sparse update
   Put("A", "va2");
   Put("B100", "bvalue2");
   Put("C", "vc2");
-  dbfull()->TEST_CompactMemTableEx();
+  dbfull()->TEST_CompactMemTable();
 
   // Compactions should not cause us to create a situation where
   // a file overlaps too much data at the next level.
@@ -1270,7 +1266,7 @@ TEST_F(DBTest, ApproximateSizes_MixOfSmallAndLarge) {
 
     if (options.reuse_logs) {
       // Need to force a memtable compaction since recovery does not do so.
-      ASSERT_LEVELDB_OK(dbfull()->TEST_CompactMemTableEx());
+      ASSERT_LEVELDB_OK(dbfull()->TEST_CompactMemTable());
     }
 
     // Check sizes across recovery by reopening a few times
@@ -1358,7 +1354,7 @@ TEST_F(DBTest, HiddenValuesAreRemoved) {
     Put("foo", "tiny");
     Put("pastfoo2", "v2");  // Advance sequence number one more
 
-    ASSERT_LEVELDB_OK(dbfull()->TEST_CompactMemTableEx());
+    ASSERT_LEVELDB_OK(dbfull()->TEST_CompactMemTable());
     ASSERT_GT(NumTableFilesAtLevel(0), 0);
 
     ASSERT_EQ(big, Get("foo", snapshot));
@@ -1379,21 +1375,21 @@ TEST_F(DBTest, HiddenValuesAreRemoved) {
 
 TEST_F(DBTest, DeletionMarkers1) {
   Put("foo", "v1");
-  ASSERT_LEVELDB_OK(dbfull()->TEST_CompactMemTableEx());
+  ASSERT_LEVELDB_OK(dbfull()->TEST_CompactMemTable());
   const int last = config::kMaxMemCompactLevel;
   ASSERT_EQ(NumTableFilesAtLevel(last), 1);  // foo => v1 is now in last level
 
   // Place a table at level last-1 to prevent merging with preceding mutation
   Put("a", "begin");
   Put("z", "end");
-  dbfull()->TEST_CompactMemTableEx();
+  dbfull()->TEST_CompactMemTable();
   ASSERT_EQ(NumTableFilesAtLevel(last), 1);
   ASSERT_EQ(NumTableFilesAtLevel(last - 1), 1);
 
   Delete("foo");
   Put("foo", "v2");
   ASSERT_EQ(AllEntriesFor("foo"), "[ v2, DEL, v1 ]");
-  ASSERT_LEVELDB_OK(dbfull()->TEST_CompactMemTableEx());  // Moves to level last-2
+  ASSERT_LEVELDB_OK(dbfull()->TEST_CompactMemTable());  // Moves to level last-2
   ASSERT_EQ(AllEntriesFor("foo"), "[ v2, DEL, v1 ]");
   Slice z("z");
   dbfull()->TEST_CompactRange(last - 2, nullptr, &z);
@@ -1408,20 +1404,20 @@ TEST_F(DBTest, DeletionMarkers1) {
 
 TEST_F(DBTest, DeletionMarkers2) {
   Put("foo", "v1");
-  ASSERT_LEVELDB_OK(dbfull()->TEST_CompactMemTableEx());
+  ASSERT_LEVELDB_OK(dbfull()->TEST_CompactMemTable());
   const int last = config::kMaxMemCompactLevel;
   ASSERT_EQ(NumTableFilesAtLevel(last), 1);  // foo => v1 is now in last level
 
   // Place a table at level last-1 to prevent merging with preceding mutation
   Put("a", "begin");
   Put("z", "end");
-  dbfull()->TEST_CompactMemTableEx();
+  dbfull()->TEST_CompactMemTable();
   ASSERT_EQ(NumTableFilesAtLevel(last), 1);
   ASSERT_EQ(NumTableFilesAtLevel(last - 1), 1);
 
   Delete("foo");
   ASSERT_EQ(AllEntriesFor("foo"), "[ DEL, v1 ]");
-  ASSERT_LEVELDB_OK(dbfull()->TEST_CompactMemTableEx());  // Moves to level last-2
+  ASSERT_LEVELDB_OK(dbfull()->TEST_CompactMemTable());  // Moves to level last-2
   ASSERT_EQ(AllEntriesFor("foo"), "[ DEL, v1 ]");
   dbfull()->TEST_CompactRange(last - 2, nullptr, nullptr);
   // DEL kept: "last" file overlaps
@@ -1440,10 +1436,10 @@ TEST_F(DBTest, OverlapInLevel0) {
     // 0.
     ASSERT_LEVELDB_OK(Put("100", "v100"));
     ASSERT_LEVELDB_OK(Put("999", "v999"));
-    dbfull()->TEST_CompactMemTableEx();
+    dbfull()->TEST_CompactMemTable();
     ASSERT_LEVELDB_OK(Delete("100"));
     ASSERT_LEVELDB_OK(Delete("999"));
-    dbfull()->TEST_CompactMemTableEx();
+    dbfull()->TEST_CompactMemTable();
     ASSERT_EQ("0,1,1", FilesPerLevel());
 
     // Make files spanning the following ranges in level-0:
@@ -1452,11 +1448,11 @@ TEST_F(DBTest, OverlapInLevel0) {
     // Note that files are sorted by smallest key.
     ASSERT_LEVELDB_OK(Put("300", "v300"));
     ASSERT_LEVELDB_OK(Put("500", "v500"));
-    dbfull()->TEST_CompactMemTableEx();
+    dbfull()->TEST_CompactMemTable();
     ASSERT_LEVELDB_OK(Put("200", "v200"));
     ASSERT_LEVELDB_OK(Put("600", "v600"));
     ASSERT_LEVELDB_OK(Put("900", "v900"));
-    dbfull()->TEST_CompactMemTableEx();
+    dbfull()->TEST_CompactMemTable();
     ASSERT_EQ("2,1,1", FilesPerLevel());
 
     // Compact away the placeholder files we created initially
@@ -1468,7 +1464,7 @@ TEST_F(DBTest, OverlapInLevel0) {
     // not detect the overlap with level-0 files and would incorrectly place
     // the deletion in a deeper level.
     ASSERT_LEVELDB_OK(Delete("600"));
-    dbfull()->TEST_CompactMemTableEx();
+    dbfull()->TEST_CompactMemTable();
     ASSERT_EQ("3", FilesPerLevel());
     ASSERT_EQ("NOT_FOUND", Get("600"));
   } while (ChangeOptions());
@@ -1788,15 +1784,13 @@ TEST_F(DBTest, WriteSyncError) {
   env_->data_sync_error_.store(true, std::memory_order_release);
 
   // (b) Normal write should succeed
-  //WriteOptions w;
-  //ASSERT_LEVELDB_OK(db_->Put(w, "k1", "v1"));
-  ASSERT_LEVELDB_OK(dbfull()->Put(*params, "k1", "v1"));
+  WriteOptions w;
+  ASSERT_LEVELDB_OK(db_->Put(w, "k1", "v1"));
   ASSERT_EQ("v1", Get("k1"));
 
   // (c) Do a sync write; should fail
-  params->options.sync = true;
-  //ASSERT_TRUE(!db_->Put(w, "k2", "v2").ok());
-  ASSERT_TRUE(!dbfull()->Put(*params, "k2", "v2").ok());
+  w.sync = true;
+  ASSERT_TRUE(!db_->Put(w, "k2", "v2").ok());
   ASSERT_EQ("v1", Get("k1"));
   ASSERT_EQ("NOT_FOUND", Get("k2"));
 
@@ -1804,9 +1798,8 @@ TEST_F(DBTest, WriteSyncError) {
   env_->data_sync_error_.store(false, std::memory_order_release);
 
   // (e) Do a non-sync write; should fail
-  params->options.sync = false;
-  //ASSERT_TRUE(!db_->Put(w, "k3", "v3").ok());
-  ASSERT_TRUE(!dbfull()->Put(*params, "k3", "v3").ok());
+  w.sync = false;
+  ASSERT_TRUE(!db_->Put(w, "k3", "v3").ok());
   ASSERT_EQ("v1", Get("k1"));
   ASSERT_EQ("NOT_FOUND", Get("k2"));
   ASSERT_EQ("NOT_FOUND", Get("k3"));
@@ -1835,7 +1828,7 @@ TEST_F(DBTest, ManifestWriteError) {
     ASSERT_EQ("bar", Get("foo"));
 
     // Memtable compaction (will succeed)
-    dbfull()->TEST_CompactMemTableEx();
+    dbfull()->TEST_CompactMemTable();
     ASSERT_EQ("bar", Get("foo"));
     const int last = config::kMaxMemCompactLevel;
     ASSERT_EQ(NumTableFilesAtLevel(last), 1);  // foo=>bar is now in last level
@@ -1857,7 +1850,7 @@ TEST_F(DBTest, MissingSSTFile) {
   ASSERT_EQ("bar", Get("foo"));
 
   // Dump the memtable to disk.
-  dbfull()->TEST_CompactMemTableEx();
+  dbfull()->TEST_CompactMemTable();
   ASSERT_EQ("bar", Get("foo"));
 
   Close();
@@ -1874,7 +1867,7 @@ TEST_F(DBTest, StillReadSST) {
   ASSERT_EQ("bar", Get("foo"));
 
   // Dump the memtable to disk.
-  dbfull()->TEST_CompactMemTableEx();
+  dbfull()->TEST_CompactMemTable();
   ASSERT_EQ("bar", Get("foo"));
   Close();
   ASSERT_GT(RenameLDBToSST(), 0);
@@ -1913,7 +1906,7 @@ TEST_F(DBTest, BloomFilter) {
   for (int i = 0; i < N; i += 100) {
     ASSERT_LEVELDB_OK(Put(Key(i), Key(i)));
   }
-  dbfull()->TEST_CompactMemTableEx();
+  dbfull()->TEST_CompactMemTable();
 
   // Prevent auto compactions triggered by seeks
   env_->delay_data_sync_.store(true, std::memory_order_release);
@@ -1946,10 +1939,6 @@ TEST_F(DBTest, BloomFilter) {
 // Multi-threaded test:
 namespace {
 
-static const int kNumThreads = 4;
-static const int kTestSeconds = 10;
-static const int kNumKeys = 1000;
-
 struct MTState {
   DBTest* test;
   std::atomic<bool> stop;
@@ -1965,15 +1954,15 @@ struct MTThread {
 static void MTThreadBody(void* arg) {
   MTThread* t = reinterpret_cast<MTThread*>(arg);
   int id = t->id;
-  DB* db = t->state->test->db_;
+  TmtDBImpl* db = reinterpret_cast<TmtDBImpl*>(t->state->test->db_);
   int counter = 0;
   std::fprintf(stderr, "... starting thread %d\n", id);
   Random rnd(1000 + id);
   std::string value;
   char valbuf[1500];
-  DBImpl* pDb = reinterpret_cast<DBImpl*>(db);
-  WriteParams* params = pDb->CreateParams();
-  
+  WriteBatch wBatch;
+  WriteOptions wOptions;
+  ReadOptions rOptions;
   while (!t->state->stop.load(std::memory_order_acquire)) {
     t->state->counter[id].store(counter, std::memory_order_release);
 
@@ -1981,29 +1970,31 @@ static void MTThreadBody(void* arg) {
     char keybuf[20];
     std::snprintf(keybuf, sizeof(keybuf), "%016d", key);
 
-    //if (rnd.OneIn(2)) {
+    if (rnd.OneIn(2)) {
       // Write values of the form <key, my id, counter>.
       // We add some padding for force compactions.
       std::snprintf(valbuf, sizeof(valbuf), "%d.%d.%-1000d", key, id,
                     static_cast<int>(counter));
-      //ASSERT_LEVELDB_OK(test->Put(WriteOptions(), Slice(keybuf), Slice(valbuf)));
-      ASSERT_LEVELDB_OK(pDb->Put(*params, Slice(keybuf), Slice(valbuf)));
-    //} else {
-    //  // Read a value and verify that it matches the pattern written above.
-    //  Status s = db->Get(ReadOptions(), Slice(keybuf), &value);
-    //  if (s.IsNotFound()) {
-    //    // Key has not yet been written
-    //  } else {
-    //    // Check that the writer thread counter is >= the counter in the value
-    //    ASSERT_LEVELDB_OK(s);
-    //    int k, w, c;
-    //    ASSERT_EQ(3, sscanf(value.c_str(), "%d.%d.%d", &k, &w, &c)) << value;
-    //    ASSERT_EQ(k, key);
-    //    ASSERT_GE(w, 0);
-    //    ASSERT_LT(w, kNumThreads);
-    //    ASSERT_LE(c, t->state->counter[w].load(std::memory_order_acquire));
-    //  }
-    //}
+      wBatch.Clear();
+      wBatch.Put(keybuf, valbuf);
+      Status s = db->WriteEx(wOptions, &wBatch, id);
+      ASSERT_LEVELDB_OK(s);
+    } else {
+      // Read a value and verify that it matches the pattern written above.
+      Status s = db->Get(rOptions, Slice(keybuf), &value);
+      if (s.IsNotFound()) {
+        // Key has not yet been written
+      } else {
+        // Check that the writer thread counter is >= the counter in the value
+        ASSERT_LEVELDB_OK(s);
+        int k, w, c;
+        ASSERT_EQ(3, sscanf(value.c_str(), "%d.%d.%d", &k, &w, &c)) << value;
+        ASSERT_EQ(k, key);
+        ASSERT_GE(w, 0);
+        ASSERT_LT(w, kNumThreads);
+        ASSERT_LE(c, t->state->counter[w].load(std::memory_order_acquire));
+      }
+    }
     counter++;
   }
   t->state->thread_done[id].store(true, std::memory_order_release);
@@ -2175,7 +2166,7 @@ static bool CompareIterators(int step, DB* model, DB* db,
                    "step %d: Value mismatch for key '%s': '%s' vs. '%s'\n",
                    step, EscapeString(miter->key()).c_str(),
                    EscapeString(miter->value()).c_str(),
-                   EscapeString(dbiter->value()).c_str());
+                   EscapeString(miter->value()).c_str());
       ok = false;
     }
   }
@@ -2212,18 +2203,15 @@ TEST_F(DBTest, Randomized) {
         v = RandomString(
             &rnd, rnd.OneIn(20) ? 100 + rnd.Uniform(100) : rnd.Uniform(8));
         ASSERT_LEVELDB_OK(model.Put(WriteOptions(), k, v));
-        ASSERT_LEVELDB_OK(Put(k, v));
+        ASSERT_LEVELDB_OK(db_->Put(WriteOptions(), k, v));
 
       } else if (p < 90) {  // Delete
         k = RandomKey(&rnd);
         ASSERT_LEVELDB_OK(model.Delete(WriteOptions(), k));
-        ASSERT_LEVELDB_OK(Delete(k));
+        ASSERT_LEVELDB_OK(db_->Delete(WriteOptions(), k));
 
       } else {  // Multi-element batch
         WriteBatch b;
-        WriteOptions o;
-        auto pDb = dbfull();
-        auto params1 = pDb->CreateParams();
         const int num = rnd.Uniform(8);
         for (int i = 0; i < num; i++) {
           if (i == 0 || !rnd.OneIn(10)) {
@@ -2235,19 +2223,12 @@ TEST_F(DBTest, Randomized) {
           if (rnd.OneIn(2)) {
             v = RandomString(&rnd, rnd.Uniform(10));
             b.Put(k, v);
-            Slice sk(k);
-            Slice sv(v);
-            pDb->AppendPut(*params1, sk, sv);
           } else {
-            Slice sk(k);
-            Slice sv(v);
             b.Delete(k);
-            pDb->AppendDelete(*params1, sk);
           }
         }
         ASSERT_LEVELDB_OK(model.Write(WriteOptions(), &b));
-        //ASSERT_LEVELDB_OK(db_->Write(WriteOptions(), &b));
-        ASSERT_LEVELDB_OK(pDb->Write(*params1));
+        ASSERT_LEVELDB_OK(db_->Write(WriteOptions(), &b));
       }
 
       if ((step % 100) == 0) {
@@ -2333,10 +2314,10 @@ void BM_LogAndApply(int iters, int num_base_files) {
 
 int main(int argc, char** argv) {
   if (argc > 1 && std::string(argv[1]) == "--benchmark") {
-    leveldb::BM_LogAndApply(1000, 1);
-    leveldb::BM_LogAndApply(1000, 100);
-    leveldb::BM_LogAndApply(1000, 10000);
-    leveldb::BM_LogAndApply(100, 100000);
+    tomatodb::BM_LogAndApply(1000, 1);
+    tomatodb::BM_LogAndApply(1000, 100);
+    tomatodb::BM_LogAndApply(1000, 10000);
+    tomatodb::BM_LogAndApply(100, 100000);
     return 0;
   }
 

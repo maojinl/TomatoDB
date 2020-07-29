@@ -133,8 +133,6 @@ DBImpl::DBImpl(const Options& raw_options, const std::string& dbname)
       seed_(0),
       tmp_batch_(new WriteBatch),
       background_compaction_scheduled_(false),
-      background_polling_thread_runing(false),
-      write_worker_idle_cv_(&write_worker_mutex_),
       manual_compaction_(nullptr),
       versions_(new VersionSet(dbname_, &options_, table_cache_,
                                &internal_comparator_)) {}
@@ -148,10 +146,6 @@ DBImpl::~DBImpl() {
     background_work_finished_signal_.Wait();
   }
 
-  while (background_polling_thread_runing) {
-    write_worker_idle_cv_.SignalAll();
-    env_->SleepForMicroseconds(100);
-  }
   mutex_.Unlock();
 
   if (db_lock_ != nullptr) {
@@ -171,10 +165,6 @@ DBImpl::~DBImpl() {
   }
   if (owns_cache_) {
     delete options_.block_cache;
-  }
-
-  for (WriteParams* p : params_pool_) {
-    delete p;
   }
 }
 
@@ -1268,7 +1258,6 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* updates) {
 // REQUIRES: Writer list must be non-empty
 // REQUIRES: First writer must have a non-null batch
 WriteBatch* DBImpl::BuildBatchGroup(Writer** last_writer) {
-  write_worker_mutex_.AssertHeld();
   assert(!writers_.empty());
   Writer* first = writers_.front();
   WriteBatch* result = first->batch;
@@ -1476,9 +1465,12 @@ Status DB::Delete(const WriteOptions& opt, const Slice& key) {
 DB::~DB() = default;
 
 Status DB::Open(const Options& options, const std::string& dbname, DB** dbptr) {
-  *dbptr = nullptr;
+  *dbptr = new DBImpl(options, dbname);
+  return OpenDBCore(options, dbname, dbptr);
+}
 
-  DBImpl* impl = new DBImpl(options, dbname);
+Status DB::OpenDBCore(const Options& options, const std::string& dbname, DB** dbptr) {
+  DBImpl* impl = (DBImpl*)*dbptr;
   impl->mutex_.Lock();
   VersionEdit edit;
   // Recover handles create_if_missing, error_if_exists
@@ -1495,8 +1487,8 @@ Status DB::Open(const Options& options, const std::string& dbname, DB** dbptr) {
       impl->logfile_ = lfile;
       impl->logfile_number_ = new_log_number;
       impl->log_ = new log::Writer(lfile);
-      impl->mem_ =
-          new MemTable(impl->internal_comparator_, impl->options_.write_buffer_size);
+      impl->mem_ = new MemTable(impl->internal_comparator_,
+                                impl->options_.write_buffer_size);
       impl->mem_->Ref();
     }
   }

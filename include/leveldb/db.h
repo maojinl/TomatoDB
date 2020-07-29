@@ -147,6 +147,9 @@ class LEVELDB_EXPORT DB {
   virtual void CompactRange(const Slice* begin, const Slice* end) = 0;
 
   virtual void RecordReadSample(Slice key) = 0;
+
+ protected:
+  static Status OpenDBCore(const Options& options, const std::string& dbname, DB** dbptr);
 };
 
 // Destroy the contents of the specified database.

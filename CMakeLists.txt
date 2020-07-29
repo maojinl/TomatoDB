@@ -124,8 +124,9 @@ target_sources(leveldb
     "db/builder.h"
     "db/c.cc"
     "db/db_impl.cc"
-	"db/db_impl_tmt.cc"
     "db/db_impl.h"
+	"db/db_impl_tmt.cc"
+    "db/db_impl_tmt.h"
     "db/db_iter.cc"
     "db/db_iter.h"
     "db/dbformat.cc"
@@ -210,7 +211,6 @@ target_sources(leveldb
     "${LEVELDB_PUBLIC_INCLUDE_DIR}/status.h"
     "${LEVELDB_PUBLIC_INCLUDE_DIR}/table_builder.h"
     "${LEVELDB_PUBLIC_INCLUDE_DIR}/table.h"
-    "${LEVELDB_PUBLIC_INCLUDE_DIR}/write_params.h"
     "${LEVELDB_PUBLIC_INCLUDE_DIR}/write_batch.h"
 )
 
@@ -488,7 +488,6 @@ if(LEVELDB_INSTALL)
       "${LEVELDB_PUBLIC_INCLUDE_DIR}/status.h"
       "${LEVELDB_PUBLIC_INCLUDE_DIR}/table_builder.h"
       "${LEVELDB_PUBLIC_INCLUDE_DIR}/table.h"
-      "${LEVELDB_PUBLIC_INCLUDE_DIR}/write_params.h"
       "${LEVELDB_PUBLIC_INCLUDE_DIR}/write_batch.h"
     DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/leveldb"
   )

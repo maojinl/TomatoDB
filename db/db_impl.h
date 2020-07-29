@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 
-#ifndef STORAGE_LEVELDB_DB_DB_IMPL_EX_H_
-#define STORAGE_LEVELDB_DB_DB_IMPL_EX_H_
+#ifndef STORAGE_LEVELDB_DB_DB_IMPL_H_
+#define STORAGE_LEVELDB_DB_DB_IMPL_H_
 
 #include "db/dbformat.h"
 #include "db/log_writer.h"
@@ -15,7 +15,6 @@
 
 #include "leveldb/db.h"
 #include "leveldb/env.h"
-#include "leveldb/write_params.h"
 
 #include "port/port.h"
 #include "port/thread_annotations.h"
@@ -30,6 +29,19 @@ class VersionSet;
 
 
 class DBImpl : public DB {
+ protected:
+  // Information kept for every waiting writer
+  struct Writer {
+    explicit Writer(port::Mutex* mu)
+        : batch(nullptr), sync(false), done(false), cv(mu) {}
+
+    Status status;
+    WriteBatch* batch;
+    bool sync;
+    bool done;
+    port::CondVar cv;
+  };
+
  public:
   DBImpl(const Options& options, const std::string& dbname);
 
@@ -42,20 +54,11 @@ class DBImpl : public DB {
   Status Put(const WriteOptions&, const Slice& key,
              const Slice& value) override;
   Status Delete(const WriteOptions&, const Slice& key) override;
-  WriteParams* CreateParams();
-  Status Put(WriteParams& p, const Slice& key,
-             const Slice& val);
-  void AppendPut(WriteParams& p, const Slice& key,
-             const Slice& val);
-  Status Delete(WriteParams& p, const Slice& key);
-  void AppendDelete(WriteParams& p, const Slice& key);
+  
   Status Write(const WriteOptions& options, WriteBatch* updates) override;
   Status Get(const ReadOptions& options, const Slice& key,
              std::string* value) override;
-  Status Write(WriteParams& p);
-  void WriteWorker();
-  void PreWriteWorker();
-  static void WriteWorkerThread(void* db);
+
   Iterator* NewIterator(const ReadOptions&) override;
   const Snapshot* GetSnapshot() override;
   void ReleaseSnapshot(const Snapshot* snapshot) override;
@@ -88,9 +91,8 @@ class DBImpl : public DB {
   // bytes.
   void RecordReadSample(Slice key);
 
- private:
+ protected:
   friend class DB;
-  friend class WriteParams;
   struct CompactionState;
 
   // Information for a manual compaction
@@ -220,14 +222,6 @@ class DBImpl : public DB {
   Status bg_error_ GUARDED_BY(mutex_);
 
   CompactionStats stats_[config::kNumLevels] GUARDED_BY(mutex_);
-
-  bool background_polling_thread_runing GUARDED_BY(mutex_);
-
-  port::Mutex write_worker_mutex_;
-
-  port::CondVar write_worker_idle_cv_ GUARDED_BY(write_worker_mutex_);
-
-  std::vector<WriteParams*> params_pool_ GUARDED_BY(mutex_);
 };
 
 // Sanitize db options.  The caller should delete result.info_log if
