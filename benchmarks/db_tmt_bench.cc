@@ -737,6 +737,7 @@ class Benchmark {
     TmtDBImpl* pDb = dbfull();
     WriteOptions wOptions;
     for (int i = 0; i < num_; i += entries_per_batch_) {
+      thread->wBatch.Clear();
       for (int j = 0; j < entries_per_batch_; j++) {
         const int k = seq ? i + j : (thread->rand.Next() % FLAGS_num);
         char key[100];
@@ -848,6 +849,7 @@ class Benchmark {
     Status s;
     WriteOptions wOptions;
     for (int i = 0; i < num_; i += entries_per_batch_) {
+      batch.Clear();
       for (int j = 0; j < entries_per_batch_; j++) {
         const int k = seq ? i + j : (thread->rand.Next() % FLAGS_num);
         char key[100];
@@ -887,6 +889,7 @@ class Benchmark {
         char key[100];
         std::snprintf(key, sizeof(key), "%016d", k);
         //Status s = db_->Put(write_options_, key, gen.Generate(value_size_));
+        thread->wBatch.Clear();
         thread->wBatch.Put(key, gen.Generate(value_size_));
         Status s = dbfull()->WriteEx(wOptions, &(thread->wBatch), thread->tid);
         if (!s.ok()) {
