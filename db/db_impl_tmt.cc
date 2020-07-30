@@ -14,7 +14,13 @@ namespace tomatodb {
 TmtDBImpl::TmtDBImpl(const Options& raw_options, const std::string& dbname)
     : DBImpl(raw_options, dbname) {}
 
-TmtDBImpl::~TmtDBImpl() {}
+TmtDBImpl::~TmtDBImpl() {
+  for (int i = 0; i < writers.size(); i++) {
+    delete writers[i];
+    writers[i] = nullptr;
+  }
+  writers.clear();
+}
 
 void TmtDBImpl::InitializeWritersPool(int threads) {
   for (int i = 0; i < threads; i++) {
@@ -25,6 +31,7 @@ void TmtDBImpl::InitializeWritersPool(int threads) {
 }
 
 Status TmtDBImpl::WriteEx(const WriteOptions& options, WriteBatch* updates, int tID) {
+  //Writer w(&mutex_);
   Writer* wp = writers[tID];
   wp->batch = updates;
   wp->sync = options.sync;
@@ -99,11 +106,11 @@ Status TmtDBImpl::WriteEx(const WriteOptions& options, WriteBatch* updates, int 
 
 Status TmtDBImpl::Open(int threads, const Options& options,
                        const std::string& dbname,
-                       DB** dbptr) {
+                       TmtDBImpl** dbptr) {
   TmtDBImpl* p = new TmtDBImpl(options, dbname);
   p->InitializeWritersPool(threads);
   *dbptr = p;
-  return OpenDBCore(options, dbname, dbptr);
+  return OpenDBCore(options, dbname, reinterpret_cast<DB**>(dbptr));
 }
 
 }  // namespace leveldb

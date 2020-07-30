@@ -319,7 +319,7 @@ class Benchmark {
  private:
   Cache* cache_;
   const FilterPolicy* filter_policy_;
-  DB* db_;
+  TmtDBImpl* db_;
   int num_;
   int value_size_;
   int entries_per_batch_;

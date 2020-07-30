@@ -12,6 +12,9 @@ namespace tomatodb {
 class TmtDBImpl : public DBImpl {
  protected:
   std::vector<Writer*> writers;
+  port::Mutex writers_queue_mutex_;
+
+ public:
   TmtDBImpl(const Options& options, const std::string& dbname);
 
   TmtDBImpl(const DBImpl&) = delete;
@@ -19,12 +22,10 @@ class TmtDBImpl : public DBImpl {
 
   ~TmtDBImpl() override;
 
-  port::Mutex writers_queue_mutex_;
-
- public:
   void InitializeWritersPool(int threads);
   Status WriteEx(const WriteOptions& options, WriteBatch* updates, int tID);
-  static Status Open(int threads, const Options& options, const std::string& name, DB** dbptr);
+  static Status Open(int threads, const Options& options,
+                     const std::string& name, TmtDBImpl** dbptr);
 };
 }  // namespace leveldb
 
