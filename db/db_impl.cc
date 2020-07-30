@@ -1504,9 +1504,9 @@ Status DB::OpenDBCore(const Options& options, const std::string& dbname, DB** db
   impl->mutex_.Unlock();
   if (s.ok()) {
     assert(impl->mem_ != nullptr);
-    *dbptr = impl;
   } else {
     delete impl;
+    *dbptr = nullptr;
   }
   return s;
 }
