@@ -56,6 +56,7 @@ class DBImpl : public DB {
   Status Delete(const WriteOptions&, const Slice& key) override;
   
   Status Write(const WriteOptions& options, WriteBatch* updates) override;
+  Status WriteEx(const WriteOptions& options, WriteBatch* updates, int tID) override;
   Status Get(const ReadOptions& options, const Slice& key,
              std::string* value) override;
 

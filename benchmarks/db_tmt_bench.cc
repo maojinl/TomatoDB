@@ -319,7 +319,7 @@ class Benchmark {
  private:
   Cache* cache_;
   const FilterPolicy* filter_policy_;
-  TmtDBImpl* db_;
+  DB* db_;
   int num_;
   int value_size_;
   int entries_per_batch_;
@@ -704,7 +704,7 @@ class Benchmark {
     options.max_open_files = FLAGS_open_files;
     options.filter_policy = filter_policy_;
     options.reuse_logs = FLAGS_reuse_logs;
-    Status s = TmtDBImpl::Open(FLAGS_threads, options, FLAGS_db, &db_);
+    Status s = DB::OpenTmt(FLAGS_threads, options, FLAGS_db, &db_);
     if (!s.ok()) {
       std::fprintf(stderr, "open error: %s\n", s.ToString().c_str());
       std::exit(1);

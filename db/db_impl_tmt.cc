@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 
+#include "leveldb/db.h"
 #include "db/db_impl_tmt.h"
 #include "util/mutexlock.h"
 #include "db/version_set.h"
@@ -104,13 +105,19 @@ Status TmtDBImpl::WriteEx(const WriteOptions& options, WriteBatch* updates, int 
   return status;
 }
 
-Status TmtDBImpl::Open(int threads, const Options& options,
-                       const std::string& dbname,
-                       TmtDBImpl** dbptr) {
-  TmtDBImpl* p = new TmtDBImpl(options, dbname);
-  p->InitializeWritersPool(threads);
-  *dbptr = p;
-  return OpenDBCore(options, dbname, reinterpret_cast<DB**>(dbptr));
-}
 
+
+}  // namespace tomatodb
+
+namespace leveldb {
+Status DB::OpenTmt(int threads, const Options& options,
+                   const std::string& dbname, DB** dbptr) {
+  *dbptr = new tomatodb::TmtDBImpl(options, dbname);
+  Status s = OpenDBCore(options, dbname, dbptr);
+  if (s.ok()) {
+    reinterpret_cast<tomatodb::TmtDBImpl*>(*dbptr)->InitializeWritersPool(
+        threads);
+  }
+  return s;
+}
 }  // namespace leveldb

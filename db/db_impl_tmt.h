@@ -24,8 +24,6 @@ class TmtDBImpl : public DBImpl {
 
   void InitializeWritersPool(int threads);
   Status WriteEx(const WriteOptions& options, WriteBatch* updates, int tID);
-  static Status Open(int threads, const Options& options,
-                     const std::string& name, TmtDBImpl** dbptr);
 };
 }  // namespace leveldb
 

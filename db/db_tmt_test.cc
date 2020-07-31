@@ -321,7 +321,7 @@ class DBTest : public testing::Test {
     }
     last_options_ = opts;
 
-    return TmtDBImpl::Open(kNumThreads, opts, dbname_, &db_);
+    return DB::OpenTmt(kNumThreads, opts, dbname_, &db_);
   }
 
   Status Put(const std::string& k, const std::string& v) {

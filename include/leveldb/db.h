@@ -53,6 +53,9 @@ class LEVELDB_EXPORT DB {
   static Status Open(const Options& options, const std::string& name,
                      DB** dbptr);
 
+  static Status OpenTmt(int threads, const Options& options,
+                     const std::string& name, DB** dbptr);
+
   DB() = default;
 
   DB(const DB&) = delete;
@@ -76,6 +79,8 @@ class LEVELDB_EXPORT DB {
   // Returns OK on success, non-OK on failure.
   // Note: consider setting options.sync = true.
   virtual Status Write(const WriteOptions& options, WriteBatch* updates) = 0;
+
+  virtual Status WriteEx(const WriteOptions& options, WriteBatch* updates, int tID) = 0;
 
   // If the database contains an entry for "key" store the
   // corresponding value in *value and return OK.
