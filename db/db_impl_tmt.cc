@@ -105,8 +105,6 @@ Status TmtDBImpl::WriteEx(const WriteOptions& options, WriteBatch* updates, int 
   return status;
 }
 
-
-
 }  // namespace tomatodb
 
 namespace leveldb {
