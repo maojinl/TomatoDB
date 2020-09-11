@@ -15,7 +15,7 @@ class TmtDBLink {
   TrieTree link_reverse_;
 
  public:
-  TmtDBLink(const std::string& dbname);
+ /* TmtDBLink(const std::string& dbname);
 
   TmtDBImpl(const DBImpl&) = delete;
   TmtDBImpl& operator=(const DBImpl&) = delete;
@@ -23,7 +23,7 @@ class TmtDBLink {
   ~TmtDBImpl() override;
 
   void InitializeWritersPool(int threads);
-  Status WriteEx(const WriteOptions& options, WriteBatch* updates, int tID);
+  Status WriteEx(const WriteOptions& options, WriteBatch* updates, int tID);*/
 };
 }  // namespace tomatodb
 

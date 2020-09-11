@@ -9,9 +9,15 @@
 
 namespace leveldb {
 class TrieTree {
- public:
+ private:
+  int words;
+  int prefixes;
+  TrieTree* parent;
+  TrieTree** edges;
+  std::map<TrieTree*, char> links;
   static const unsigned char TRIETREE_EDGE_SIZE = 256;
 
+ public:
   TrieTree(TrieTree* pParent) : words(0), prefixes(0), parent(pParent) {
     edges = new TrieTree*[TRIETREE_EDGE_SIZE];
   }
@@ -36,13 +42,15 @@ class TrieTree {
     }
   }
 
-  ~TrieTree() {
+  virtual ~TrieTree() {
     for (int i = 0; i <= TRIETREE_EDGE_SIZE; i++) {
       if (edges[i] != nullptr) {
         delete edges[i];
         edges[i] = nullptr;
       }
+    }
   }
+
 
   TrieTree* FindWord(Slice str) {
     if (str.size() > 0) {
@@ -74,13 +82,6 @@ class TrieTree {
   bool IsEmpty() { 
     return words == 0 && prefixes == 0;
   }
-
- private:
-  int words;
-  int prefixes;
-  TrieTree* parent;
-  TrieTree** edges;
-  std::map<TrieTree*, char> links;
 };
 
 }  // namespace leveldb
