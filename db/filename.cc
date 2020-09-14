@@ -48,6 +48,10 @@ std::string DescriptorFileName(const std::string& dbname, uint64_t number) {
   return dbname + buf;
 }
 
+std::string LinkFileName(const std::string& dbname, const std::string& linkname) {
+  return dbname + "LINK-" + linkname;
+}
+
 std::string CurrentFileName(const std::string& dbname) {
   return dbname + "/CURRENT";
 }

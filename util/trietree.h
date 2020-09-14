@@ -23,7 +23,7 @@ class TrieTree {
   }
   TrieTree() : TrieTree(nullptr) {}
 
-  TrieTree* AddWord(Slice str) {
+  TrieTree* AddWord(Slice& str) {
     if (str.size() == 0) {
       words += 1;
       return this;
@@ -42,6 +42,41 @@ class TrieTree {
     }
   }
 
+  void ReducePrefix() {
+    assert(prefixes > 0);
+    prefixes--;
+  }
+
+  void ReduceWord() {
+    assert(words > 0);
+    words--;
+  }
+
+  TrieTree* GetParent() { return parent; }
+
+  bool RemoveWord(Slice& str) { 
+    if (str.size() == 0) {
+      ReduceWord();
+      return true;
+    }
+    char k = str[0];
+    if (edges[k] == nullptr) {
+      return false;
+    }
+    str.remove_prefix(1);
+    bool ret = edges[k]->RemoveWord(str);
+    if (!ret) {
+      return ret;
+    }
+    
+    if (edges[k]->IsEmpty()) {
+      ReducePrefix();
+      delete edges[k];
+      edges[k] = nullptr;
+    }
+    return true;
+  }
+
   virtual ~TrieTree() {
     for (int i = 0; i <= TRIETREE_EDGE_SIZE; i++) {
       if (edges[i] != nullptr) {
@@ -51,14 +86,15 @@ class TrieTree {
     }
   }
 
-
-  TrieTree* FindWord(Slice str) {
+  TrieTree* FindWord(Slice& str) {
     if (str.size() > 0) {
-      char k;
-      k = str[0];
+      char k = str[0];
+      if (edges[k] == nullptr) {
+        return nullptr;
+      }
+          
       str.remove_prefix(1);
-      int index = k;
-      return edges[index]->FindWord(str);
+      return edges[k]->FindWord(str);
     }
     return this;
   }
@@ -81,6 +117,10 @@ class TrieTree {
 
   bool IsEmpty() { 
     return words == 0 && prefixes == 0;
+  }
+
+  bool IsRoot() { 
+    return parent == nullptr;
   }
 };
 

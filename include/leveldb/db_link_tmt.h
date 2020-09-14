@@ -5,7 +5,9 @@
 #define STORAGE_TOMATODB_DB_LINK_H_
 
 #include "util/trietree.h"
+#include <vector>
 using namespace leveldb;
+using namespace std;
 
 namespace tomatodb {
 
@@ -13,14 +15,18 @@ class TmtDBLink {
  protected:
   TrieTree link_to_;
   TrieTree link_reverse_;
-
+  string db_name_;
+  string link_name_;
  public:
- /* TmtDBLink(const std::string& dbname);
+  TmtDBLink(const string& dbName, const string& linkName)
+      : db_name_(dbName), link_name_(linkName) {}
+  virtual ~TmtDBLink();
+  TmtDBLink(const TmtDBLink&) = delete;
+  TmtDBLink& operator=(const TmtDBLink&) = delete;
 
-  TmtDBImpl(const DBImpl&) = delete;
-  TmtDBImpl& operator=(const DBImpl&) = delete;
-
-  ~TmtDBImpl() override;
+  Status AddLink(const string& key, const vector<string>& links);
+  Status RemoveLink(const string& key);
+  /*  ~TmtDBImpl() override;
 
   void InitializeWritersPool(int threads);
   Status WriteEx(const WriteOptions& options, WriteBatch* updates, int tID);*/
