@@ -4,8 +4,10 @@
 #ifndef STORAGE_TOMATODB_DB_LINK_H_
 #define STORAGE_TOMATODB_DB_LINK_H_
 
-#include "util/trietree.h"
 #include <vector>
+#include <string>
+#include "util/trietree.h"
+
 using namespace leveldb;
 using namespace std;
 
@@ -24,8 +26,8 @@ class TmtDBLink {
   TmtDBLink(const TmtDBLink&) = delete;
   TmtDBLink& operator=(const TmtDBLink&) = delete;
 
-  Status AddLink(const string& key, const vector<string>& links);
-  Status RemoveLink(const string& key);
+  Status AddLinks(const string& key, const vector<string>& links);
+  Status RemoveLinks(const string& key);
   /*  ~TmtDBImpl() override;
 
   void InitializeWritersPool(int threads);

@@ -8,7 +8,11 @@
 #include "leveldb/slice.h"
 
 namespace leveldb {
+
 class TrieTree {
+ public:
+  typedef typename std::map<TrieTree*, char>::iterator LinksIterator;
+
  private:
   int words;
   int prefixes;
@@ -54,7 +58,7 @@ class TrieTree {
 
   TrieTree* GetParent() { return parent; }
 
-  bool RemoveWord(Slice& str) { 
+  bool RemoveWord(Slice& str) {
     if (str.size() == 0) {
       ReduceWord();
       return true;
@@ -68,7 +72,7 @@ class TrieTree {
     if (!ret) {
       return ret;
     }
-    
+
     if (edges[k]->IsEmpty()) {
       ReducePrefix();
       delete edges[k];
@@ -92,14 +96,14 @@ class TrieTree {
       if (edges[k] == nullptr) {
         return nullptr;
       }
-          
+
       str.remove_prefix(1);
       return edges[k]->FindWord(str);
     }
     return this;
   }
 
-  void AddLink(TrieTree* data) { 
+  void AddLink(TrieTree* data) {
     std::map<TrieTree*, char>::iterator ite = links.find(data);
     if (ite != links.end()) {
       links.insert(std::pair<TrieTree*, char>(data, 0));
@@ -115,15 +119,18 @@ class TrieTree {
     return;
   }
 
-  bool IsEmpty() { 
-    return words == 0 && prefixes == 0;
+  bool IsEmpty() { return words == 0 && prefixes == 0; }
+
+  bool IsRoot() { return parent == nullptr; }
+
+   LinksIterator LinksBegin() {
+    return links.begin();
   }
 
-  bool IsRoot() { 
-    return parent == nullptr;
+   LinksIterator LinksEnd() {
+    return links.end();
   }
 };
 
 }  // namespace leveldb
-
 #endif  // STORAGE_TOMATODB_TRIETREE_H_

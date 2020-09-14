@@ -111,7 +111,8 @@ namespace leveldb {
 Status DB::OpenTmt(int threads, const Options& options,
                    const std::string& dbname, DB** dbptr) {
   *dbptr = new tomatodb::TmtDBImpl(options, dbname);
-  Status s = OpenDBCore(options, dbname, dbptr);
+  Status s = OpenDBCore  
+(options, dbname, dbptr);
   if (s.ok()) {
     reinterpret_cast<tomatodb::TmtDBImpl*>(*dbptr)->InitializeWritersPool(
         threads);
