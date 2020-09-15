@@ -14,7 +14,7 @@ class TrieTree {
   typedef typename std::map<TrieTree*, char>::iterator LinksIterator;
 
  private:
-  int words;
+  int edgesCount;
   int prefixes;
   TrieTree* parent;
   TrieTree** edges;
@@ -22,64 +22,10 @@ class TrieTree {
   static const unsigned char TRIETREE_EDGE_SIZE = 256;
 
  public:
-  TrieTree(TrieTree* pParent) : words(0), prefixes(0), parent(pParent) {
+  TrieTree(TrieTree* pParent) : edgesCount(0), prefixes(0), parent(pParent) {
     edges = new TrieTree*[TRIETREE_EDGE_SIZE];
   }
   TrieTree() : TrieTree(nullptr) {}
-
-  TrieTree* AddWord(Slice& str) {
-    if (str.size() == 0) {
-      words += 1;
-      return this;
-    } else {
-      prefixes += 1;
-      if (str.size() > 0) {
-        char k;
-        k = str[0];
-        str.remove_prefix(1);
-        int index = k;
-        if (edges[index] == nullptr) {
-          edges[index] = new TrieTree(this);
-        }
-        return edges[index]->AddWord(str);
-      }
-    }
-  }
-
-  void ReducePrefix() {
-    assert(prefixes > 0);
-    prefixes--;
-  }
-
-  void ReduceWord() {
-    assert(words > 0);
-    words--;
-  }
-
-  TrieTree* GetParent() { return parent; }
-
-  bool RemoveWord(Slice& str) {
-    if (str.size() == 0) {
-      ReduceWord();
-      return true;
-    }
-    char k = str[0];
-    if (edges[k] == nullptr) {
-      return false;
-    }
-    str.remove_prefix(1);
-    bool ret = edges[k]->RemoveWord(str);
-    if (!ret) {
-      return ret;
-    }
-
-    if (edges[k]->IsEmpty()) {
-      ReducePrefix();
-      delete edges[k];
-      edges[k] = nullptr;
-    }
-    return true;
-  }
 
   virtual ~TrieTree() {
     for (int i = 0; i <= TRIETREE_EDGE_SIZE; i++) {
@@ -89,6 +35,13 @@ class TrieTree {
       }
     }
   }
+
+  void ReducePrefix() {
+    assert(prefixes > 0);
+    prefixes--;
+  }
+
+  TrieTree* GetParent() { return parent; }
 
   TrieTree* FindWord(Slice& str) {
     if (str.size() > 0) {
@@ -116,10 +69,15 @@ class TrieTree {
     if (ite != links.end()) {
       links.erase(ite);
     }
+    if (links.size() == 0) {
+      
+    }
     return;
   }
 
-  bool IsEmpty() { return words == 0 && prefixes == 0; }
+  bool IsEmpty() {
+    return edgesCount == 0 && prefixes == 0 && links.size() == 0;
+  }
 
   bool IsRoot() { return parent == nullptr; }
 
@@ -130,6 +88,53 @@ class TrieTree {
    LinksIterator LinksEnd() {
     return links.end();
   }
+
+  TrieTree* AddWord(Slice& str) {
+    if (str.size() == 0) {
+       return this;
+     } else {
+       prefixes += 1;
+       if (str.size() > 0) {
+         char k;
+         k = str[0];
+         str.remove_prefix(1);
+         int index = k;
+         if (edges[index] == nullptr) {
+           edges[index] = new TrieTree(this);
+           edgesCount++;
+         }
+         return edges[index]->AddWord(str);
+       }
+     }
+   }
+
+  bool RemoveWord(Slice& str) {
+    assert(IsRoot());
+    RemoveWordCore(str);
+  }
+ private:
+  bool RemoveWordCore(Slice& str) {
+     if (str.size() == 0) {
+       return true;
+     }
+     char k = str[0];
+     if (edges[k] == nullptr) {
+       return false;
+     }
+     str.remove_prefix(1);
+     bool ret = edges[k]->RemoveWordCore(str);
+     if (!ret) {
+       return ret;
+     }
+
+     if (edges[k]->IsEmpty()) {
+       ReducePrefix();
+       delete edges[k];
+       edges[k] = nullptr;
+       edgesCount--;
+     }
+     return true;
+   }
 };
 
 }  // namespace leveldb
