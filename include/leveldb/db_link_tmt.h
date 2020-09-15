@@ -28,6 +28,7 @@ class TmtDBLink {
 
   Status AddLinks(const string& key, const vector<string>& links);
   Status RemoveLinks(const string& key);
+  Status GetLinksReverse(const string& key, vector<string*>& links_reverse);
   /*  ~TmtDBImpl() override;
 
   void InitializeWritersPool(int threads);

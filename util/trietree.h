@@ -49,6 +49,8 @@ class TrieTree {
 
   unsigned char GetChar() { return char_; }
 
+  int GetLevel() { return level_; }
+
   TrieTree* FindWord(Slice& str) {
     if (str.size() > 0) {
       char k = str[0];
