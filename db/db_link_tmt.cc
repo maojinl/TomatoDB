@@ -26,6 +26,9 @@ namespace tomatodb {
       for (; ite != iteEnd; ite++) {
         TrieTree* rt = ite->first;
         rt->RemoveLink(t);
+        if (rt->IsEmpty()) {
+          TrieTree::RemoveNode(&link_reverse_, t);
+        }
       }
     }
     return Status::OK();

@@ -5,6 +5,7 @@
 #define STORAGE_TOMATODB_TRIETREE_H_
 
 #include <map>
+#include <stack>
 #include "leveldb/slice.h"
 
 namespace leveldb {
@@ -20,12 +21,15 @@ class TrieTree {
   TrieTree** edges;
   std::map<TrieTree*, char> links;
   static const unsigned char TRIETREE_EDGE_SIZE = 256;
+  unsigned char char_;
+  int level_;
 
  public:
-  TrieTree(TrieTree* pParent) : edgesCount(0), prefixes(0), parent(pParent) {
+  TrieTree(TrieTree* pParent, unsigned char c, int level)
+      : edgesCount(0), prefixes(0), parent(pParent), char_(c), level_(level) {
     edges = new TrieTree*[TRIETREE_EDGE_SIZE];
   }
-  TrieTree() : TrieTree(nullptr) {}
+  TrieTree() : TrieTree(nullptr, 0, 0) {}
 
   virtual ~TrieTree() {
     for (int i = 0; i <= TRIETREE_EDGE_SIZE; i++) {
@@ -42,6 +46,8 @@ class TrieTree {
   }
 
   TrieTree* GetParent() { return parent; }
+
+  unsigned char GetChar() { return char_; }
 
   TrieTree* FindWord(Slice& str) {
     if (str.size() > 0) {
@@ -69,9 +75,6 @@ class TrieTree {
     if (ite != links.end()) {
       links.erase(ite);
     }
-    if (links.size() == 0) {
-      
-    }
     return;
   }
 
@@ -95,12 +98,12 @@ class TrieTree {
      } else {
        prefixes += 1;
        if (str.size() > 0) {
-         char k;
+         unsigned char k;
          k = str[0];
          str.remove_prefix(1);
          int index = k;
          if (edges[index] == nullptr) {
-           edges[index] = new TrieTree(this);
+           edges[index] = new TrieTree(this, k, level_ + 1);
            edgesCount++;
          }
          return edges[index]->AddWord(str);
@@ -112,6 +115,33 @@ class TrieTree {
     assert(IsRoot());
     RemoveWordCore(str);
   }
+
+  static bool RemoveNode(TrieTree* root, TrieTree*& node) {
+    if (!root->IsRoot()) {
+      return false;
+    }
+
+    TrieTree* t = node;
+    TrieTree* p = node->GetParent();
+    while (t != root) {
+      if (t->IsEmpty()) {
+        p->RemoveEdge(t->GetChar());
+        t = p;
+      } 
+      else {
+        break;
+      }
+    }
+    return true;
+  }
+
+  void RemoveEdge(unsigned char c) { 
+    if (edges[c] != nullptr) {
+      delete edges[c];
+      edges[c] = nullptr;
+    }
+  }
+
  private:
   bool RemoveWordCore(Slice& str) {
      if (str.size() == 0) {
