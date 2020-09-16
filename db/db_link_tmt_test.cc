@@ -4,6 +4,7 @@
 #include <atomic>
 #include <string>
 #include "util/trietree.h"
+#include "leveldb/db_link_tmt.h"
 #include "util/testutil.h"
 #include "leveldb/slice.h"
 
@@ -57,8 +58,9 @@ TEST(TrieTreeTest, RemoveNodeTest) {
   ASSERT_EQ(t.GetEdgesCount(), 1);
 }
 
-TEST(DBLinkTmtTest, Simple) {
- 
+TEST(DBLinkTmtTest, Simple) { 
+  TmtDBLink link("testdb", "friends"); 
+  
 }
 
 }  // namespace tomatodb
