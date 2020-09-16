@@ -2310,7 +2310,7 @@ void BM_LogAndApply(int iters, int num_base_files) {
                buf, iters, us, ((float)us) / iters);
 }
 
-}  // namespace leveldb
+}  // namespace tomatodb
 
 int main(int argc, char** argv) {
   if (argc > 1 && std::string(argv[1]) == "--benchmark") {

@@ -8,6 +8,8 @@
 #include <stack>
 #include "leveldb/slice.h"
 
+#define TRIETREE_EDGE_SIZE 256
+
 namespace leveldb {
 
 class TrieTree {
@@ -16,18 +18,22 @@ class TrieTree {
 
  private:
   int edgesCount;
-  int prefixes;
+  //int prefixes;
   TrieTree* parent;
   TrieTree** edges;
   std::map<TrieTree*, char> links;
-  static const unsigned char TRIETREE_EDGE_SIZE = 256;
+
   unsigned char char_;
   int level_;
 
  public:
   TrieTree(TrieTree* pParent, unsigned char c, int level)
-      : edgesCount(0), prefixes(0), parent(pParent), char_(c), level_(level) {
+      : edgesCount(0), /*prefixes(0), */parent(pParent), char_(c), level_(level) {
     edges = new TrieTree*[TRIETREE_EDGE_SIZE];
+    //memset(edges, null, sizeof(TrieTree*) * TRIETREE_EDGE_SIZE);
+    for (int i = 0; i <= TRIETREE_EDGE_SIZE; i++) {
+      edges[i] = nullptr;
+    }
   }
   TrieTree() : TrieTree(nullptr, 0, 0) {}
 
@@ -40,16 +46,18 @@ class TrieTree {
     }
   }
 
-  void ReducePrefix() {
-    assert(prefixes > 0);
-    prefixes--;
-  }
+  //void ReducePrefix() {
+  //  assert(prefixes > 0);
+  //  prefixes--;
+  //}
 
   TrieTree* GetParent() { return parent; }
 
   unsigned char GetChar() { return char_; }
 
   int GetLevel() { return level_; }
+
+  int GetEdgesCount() { return edgesCount; }
 
   TrieTree* FindWord(Slice& str) {
     if (str.size() > 0) {
@@ -81,7 +89,7 @@ class TrieTree {
   }
 
   bool IsEmpty() {
-    return edgesCount == 0 && prefixes == 0 && links.size() == 0;
+    return edgesCount == 0 && links.size() == 0;
   }
 
   bool IsRoot() { return parent == nullptr; }
@@ -98,16 +106,12 @@ class TrieTree {
     if (str.size() == 0) {
        return this;
      } else {
-       prefixes += 1;
        if (str.size() > 0) {
          unsigned char k;
          k = str[0];
          str.remove_prefix(1);
          int index = k;
-         if (edges[index] == nullptr) {
-           edges[index] = new TrieTree(this, k, level_ + 1);
-           edgesCount++;
-         }
+         AddEdge(k);
          return edges[index]->AddWord(str);
        }
      }
@@ -124,23 +128,38 @@ class TrieTree {
     }
 
     TrieTree* t = node;
-    TrieTree* p = node->GetParent();
+    TrieTree* p;
+    bool removed = false;
     while (t != root) {
-      if (t->IsEmpty()) {
-        p->RemoveEdge(t->GetChar());
+      p = t->GetParent();
+      if (t->IsEmpty() && p->RemoveEdge(t->GetChar())) {
+        removed = true;
         t = p;
       } 
       else {
         break;
       }
     }
-    return true;
+    if (removed) {
+      node = nullptr;
+    }
+    return removed;
   }
 
-  void RemoveEdge(unsigned char c) { 
+  bool RemoveEdge(unsigned char c) { 
     if (edges[c] != nullptr) {
       delete edges[c];
       edges[c] = nullptr;
+      edgesCount--;
+      return true;
+    }
+    return false;
+  }
+
+  void AddEdge(unsigned char c) {
+    if (edges[c] == nullptr) {
+      edges[c] = new TrieTree(this, c, level_ + 1);
+      edgesCount++;
     }
   }
 
@@ -159,12 +178,7 @@ class TrieTree {
        return ret;
      }
 
-     if (edges[k]->IsEmpty()) {
-       ReducePrefix();
-       delete edges[k];
-       edges[k] = nullptr;
-       edgesCount--;
-     }
+     RemoveEdge(k);
      return true;
    }
 };
