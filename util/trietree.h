@@ -88,6 +88,11 @@ class TrieTree {
     return;
   }
 
+  void RemoveAllLink() {
+    links.clear();
+    return;
+  }
+
   bool IsEmpty() {
     return edgesCount == 0 && links.size() == 0;
   }

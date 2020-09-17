@@ -27,9 +27,13 @@ namespace tomatodb {
         TrieTree* rt = ite->first;
         rt->RemoveLink(t);
         if (rt->IsEmpty()) {
-          TrieTree::RemoveNode(&link_reverse_, t);
+          TrieTree::RemoveNode(&link_reverse_, rt);
         }
       }
+    }
+    t->RemoveAllLink();
+    if (t->IsEmpty()) {
+      TrieTree::RemoveNode(&link_to_, t);
     }
     return Status::OK();
   }
@@ -45,7 +49,7 @@ namespace tomatodb {
         int slen = t->GetLevel();
         string* p_str = new string(slen, char(0));
         while (slen > 0) {
-          p_str[slen - 1] = t->GetChar();
+          (*p_str)[slen - 1] = t->GetChar();
           slen--;
           t = t->GetParent();
         }

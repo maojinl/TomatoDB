@@ -81,7 +81,7 @@ TEST(DBLinkTmtTest, Simple) {
   link.GetLinksReverse(s1, ret);
   ASSERT_EQ(ret.size(), 2);
   for (int i = 0; i < ret.size(); i++) {
-    bool flag = ret[i]->compare(s2) != 0 || ret[i]->compare(s3) != 0;
+    bool flag = ret[i]->compare(s2) == 0 || ret[i]->compare(s3) == 0;
     ASSERT_EQ(flag, true);
   }
   for (int i = 0; i < ret.size(); i++) {
@@ -92,7 +92,7 @@ TEST(DBLinkTmtTest, Simple) {
   link.GetLinksReverse(s2, ret);
   ASSERT_EQ(ret.size(), 2);
   for (int i = 0; i < ret.size(); i++) {
-    bool flag = ret[i]->compare(s1) != 0 || ret[i]->compare(s3) != 0;
+    bool flag = ret[i]->compare(s1) == 0 || ret[i]->compare(s3) == 0;
     ASSERT_EQ(flag, true);
   }
   for (int i = 0; i < ret.size(); i++) {
@@ -103,7 +103,7 @@ TEST(DBLinkTmtTest, Simple) {
   link.GetLinksReverse(s3, ret);
   ASSERT_EQ(ret.size(), 2);
   for (int i = 0; i < ret.size(); i++) {
-    bool flag = ret[i]->compare(s1) != 0 || ret[i]->compare(s2) != 0;
+    bool flag = ret[i]->compare(s1) == 0 || ret[i]->compare(s2) == 0;
     ASSERT_EQ(flag, true);
   }
   for (int i = 0; i < ret.size(); i++) {
@@ -111,12 +111,13 @@ TEST(DBLinkTmtTest, Simple) {
   }
   ret.clear();
 
+  link.RemoveLinks(s2);
   link.RemoveLinks(s1);
 
   link.GetLinksReverse(s2, ret);
   ASSERT_EQ(ret.size(), 1);
   for (int i = 0; i < ret.size(); i++) {
-    bool flag = ret[i]->compare(s3) != 0;
+    bool flag = ret[i]->compare(s3) == 0;
     ASSERT_EQ(flag, true);
   }
   for (int i = 0; i < ret.size(); i++) {
@@ -125,15 +126,15 @@ TEST(DBLinkTmtTest, Simple) {
   ret.clear();
 
   link.GetLinksReverse(s3, ret);
-  ASSERT_EQ(ret.size(), 1);
-  for (int i = 0; i < ret.size(); i++) {
-    bool flag = ret[i]->compare(s2) != 0;
-    ASSERT_EQ(flag, true);
-  }
-  for (int i = 0; i < ret.size(); i++) {
-    delete ret[i];
-  }
-  ret.clear();
+  ASSERT_EQ(ret.size(), 0);
+  //for (int i = 0; i < ret.size(); i++) {
+  //  bool flag = ret[i]->compare(s2) == 0;
+  //  ASSERT_EQ(flag, true);
+  //}
+  //for (int i = 0; i < ret.size(); i++) {
+  //  delete ret[i];
+  //}
+  //ret.clear();
 
 }
 }  // namespace tomatodb
