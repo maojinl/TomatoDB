@@ -36,18 +36,18 @@ namespace tomatodb {
 
   Status TmtDBLink::GetLinksReverse(const string& key,
                                     vector<string*>& links_reverse) {
-    TrieTree* t = link_to_.FindWord(Slice(key));
-    if (t != nullptr) {
-      TrieTree::LinksIterator ite = t->LinksBegin();
-      TrieTree::LinksIterator iteEnd = t->LinksEnd();
+    TrieTree* rt = link_reverse_.FindWord(Slice(key));
+    if (rt != nullptr) {
+      TrieTree::LinksIterator ite = rt->LinksBegin();
+      TrieTree::LinksIterator iteEnd = rt->LinksEnd();
       for (; ite != iteEnd; ite++) {
-        TrieTree* rt = ite->first;
-        int slen = rt->GetLevel();
+        TrieTree* t = ite->first;
+        int slen = t->GetLevel();
         string* p_str = new string(slen, char(0));
         while (slen > 0) {
-          p_str[slen - 1] = rt->GetChar();
+          p_str[slen - 1] = t->GetChar();
           slen--;
-          rt = rt->GetParent();
+          t = t->GetParent();
         }
         links_reverse.push_back(p_str);
       }

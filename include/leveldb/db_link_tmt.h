@@ -7,6 +7,7 @@
 #include <vector>
 #include <string>
 #include "util/trietree.h"
+#include "leveldb/status.h"
 
 using namespace leveldb;
 using namespace std;
@@ -26,7 +27,7 @@ class TmtDBLink {
   TmtDBLink(const TmtDBLink&) = delete;
   TmtDBLink& operator=(const TmtDBLink&) = delete;
 
-  Status AddLinks(const string& key, const vector<string>& links);
+  Status AddLinks(const string& key, const vector<string>& links); 
   Status RemoveLinks(const string& key);
   Status GetLinksReverse(const string& key, vector<string*>& links_reverse);
   /*  ~TmtDBImpl() override;

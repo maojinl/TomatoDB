@@ -3,6 +3,7 @@
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 #include <atomic>
 #include <string>
+#include <vector>
 #include "util/trietree.h"
 #include "leveldb/db_link_tmt.h"
 #include "util/testutil.h"
@@ -58,11 +59,83 @@ TEST(TrieTreeTest, RemoveNodeTest) {
   ASSERT_EQ(t.GetEdgesCount(), 1);
 }
 
-TEST(DBLinkTmtTest, Simple) { 
-  TmtDBLink link("testdb", "friends"); 
-  
-}
+TEST(DBLinkTmtTest, Simple) {
+  TmtDBLink link("testdb", "friends");
+  vector<string> l;
+  string s1 = "abc";
+  string s2 = "bcd";
+  string s3 = "ghi";
+  l.push_back(s2);
+  l.push_back(s3);
+  link.AddLinks(s1, l);
+  l.clear();
+  l.push_back(s1);
+  l.push_back(s3);
+  link.AddLinks(s2, l);
+  l.clear();
+  l.push_back(s1);
+  l.push_back(s2);
+  link.AddLinks(s3, l);
 
+  vector<string*> ret;
+  link.GetLinksReverse(s1, ret);
+  ASSERT_EQ(ret.size(), 2);
+  for (int i = 0; i < ret.size(); i++) {
+    bool flag = ret[i]->compare(s2) != 0 || ret[i]->compare(s3) != 0;
+    ASSERT_EQ(flag, true);
+  }
+  for (int i = 0; i < ret.size(); i++) {
+    delete ret[i];
+  }
+  ret.clear();
+
+  link.GetLinksReverse(s2, ret);
+  ASSERT_EQ(ret.size(), 2);
+  for (int i = 0; i < ret.size(); i++) {
+    bool flag = ret[i]->compare(s1) != 0 || ret[i]->compare(s3) != 0;
+    ASSERT_EQ(flag, true);
+  }
+  for (int i = 0; i < ret.size(); i++) {
+    delete ret[i];
+  }
+  ret.clear();
+
+  link.GetLinksReverse(s3, ret);
+  ASSERT_EQ(ret.size(), 2);
+  for (int i = 0; i < ret.size(); i++) {
+    bool flag = ret[i]->compare(s1) != 0 || ret[i]->compare(s2) != 0;
+    ASSERT_EQ(flag, true);
+  }
+  for (int i = 0; i < ret.size(); i++) {
+    delete ret[i];
+  }
+  ret.clear();
+
+  link.RemoveLinks(s1);
+
+  link.GetLinksReverse(s2, ret);
+  ASSERT_EQ(ret.size(), 1);
+  for (int i = 0; i < ret.size(); i++) {
+    bool flag = ret[i]->compare(s3) != 0;
+    ASSERT_EQ(flag, true);
+  }
+  for (int i = 0; i < ret.size(); i++) {
+    delete ret[i];
+  }
+  ret.clear();
+
+  link.GetLinksReverse(s3, ret);
+  ASSERT_EQ(ret.size(), 1);
+  for (int i = 0; i < ret.size(); i++) {
+    bool flag = ret[i]->compare(s2) != 0;
+    ASSERT_EQ(flag, true);
+  }
+  for (int i = 0; i < ret.size(); i++) {
+    delete ret[i];
+  }
+  ret.clear();
+
+}
 }  // namespace tomatodb
 
 int main(int argc, char** argv) {

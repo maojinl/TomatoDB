@@ -74,7 +74,7 @@ class TrieTree {
 
   void AddLink(TrieTree* data) {
     std::map<TrieTree*, char>::iterator ite = links.find(data);
-    if (ite != links.end()) {
+    if (ite == links.end()) {
       links.insert(std::pair<TrieTree*, char>(data, 0));
     }
     return;
