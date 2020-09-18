@@ -38,6 +38,27 @@ namespace tomatodb {
     return Status::OK();
   }
 
+   Status TmtDBLink::GetLinks(const string& key,
+                                    vector<string*>& links) {
+    TrieTree* t = link_to_.FindWord(Slice(key));
+    if (t != nullptr) {
+      TrieTree::LinksIterator ite = t->LinksBegin();
+      TrieTree::LinksIterator iteEnd = t->LinksEnd();
+      for (; ite != iteEnd; ite++) {
+        TrieTree* rt = ite->first;
+        size_t slen = rt->GetLevel();
+        string* p_str = new string(slen, char(0));
+        while (slen > 0) {
+          (*p_str)[slen - 1] = rt->GetChar();
+          slen--;
+          rt = rt->GetParent();
+        }
+        links.push_back(p_str);
+      }
+    }
+    return Status::OK();
+  }
+
   Status TmtDBLink::GetLinksReverse(const string& key,
                                     vector<string*>& links_reverse) {
     TrieTree* rt = link_reverse_.FindWord(Slice(key));
@@ -46,7 +67,7 @@ namespace tomatodb {
       TrieTree::LinksIterator iteEnd = rt->LinksEnd();
       for (; ite != iteEnd; ite++) {
         TrieTree* t = ite->first;
-        int slen = t->GetLevel();
+        size_t slen = t->GetLevel();
         string* p_str = new string(slen, char(0));
         while (slen > 0) {
           (*p_str)[slen - 1] = t->GetChar();
