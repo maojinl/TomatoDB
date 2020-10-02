@@ -178,6 +178,7 @@ target_sources(leveldb
     "util/memoryhandler.cc"
     "util/memoryhandler.h"
     "util/trietree.h"
+    "util/sorted_vector.h"
     "util/bloom.cc"
     "util/cache.cc"
     "util/coding.cc"

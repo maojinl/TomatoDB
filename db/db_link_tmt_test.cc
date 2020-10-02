@@ -151,6 +151,7 @@ TEST(DBLinkTmtTest, Bench) {
 
   TmtDBLink link("testdb", "recersive");
   Random rnd(test::RandomSeed());
+  cout << " tree size " << sizeof(TrieTree) << endl;
   
   for (int i = 0; i < kNumKeys; i++) {
     vector<string> vk;
