@@ -7,7 +7,9 @@
 #include <map>
 #include <stack>
 #include <unordered_map>
+
 #include "leveldb/slice.h"
+#include "sorted_vector.h"
 
 #define TRIETREE_EDGE_SIZE 256
 
@@ -17,22 +19,21 @@ using namespace std;
 
 class TrieTree {
  public:
-  typedef typename std::map<TrieTree*, char>::iterator LinksIterator;
+  typedef typename SortedVector<TrieTree*>::iterator LinksIterator;
 
  private:
-  size_t edgesCount;
   //int prefixes;
   TrieTree* parent;
   //TrieTree** edges;
   unordered_map<unsigned char, TrieTree*> edges;
-  map<TrieTree*, char> links;
+  //SortedVector<TrieTree*> links;
 
   unsigned char char_;
   size_t level_;
 
  public:
   TrieTree(TrieTree* pParent, unsigned char c, int level)
-      : edgesCount(0), /*prefixes(0), */parent(pParent), char_(c), level_(level) {
+      : /*prefixes(0), */parent(pParent), char_(c), level_(level) {
     //edges = new TrieTree*[TRIETREE_EDGE_SIZE];
     //for (int i = 0; i <= TRIETREE_EDGE_SIZE; i++) {
     //  edges[i] = nullptr;
@@ -41,12 +42,6 @@ class TrieTree {
   TrieTree() : TrieTree(nullptr, 0, 0) {}
 
   virtual ~TrieTree() {
-    //for (int i = 0; i <= TRIETREE_EDGE_SIZE; i++) {
-    //  if (edges[i] != nullptr) {
-    //    delete edges[i];
-    //    edges[i] = nullptr;
-    //  }
-    //}
     unordered_map<unsigned char, TrieTree*>::iterator ite = edges.begin();
     for (; ite != edges.end(); ite++) {
       delete ite->second;
@@ -65,7 +60,7 @@ class TrieTree {
 
   size_t GetLevel() { return level_; }
 
-  size_t GetEdgesCount() { return edgesCount; }
+  size_t GetEdgesCount() { return edges.size(); }
 
   TrieTree* FindWord(Slice& str) {
     if (str.size() > 0) {
@@ -84,42 +79,45 @@ class TrieTree {
     return this;
   }
 
-  std::vector<TrieTree*> vt;
+  //std::vector<TrieTree*> vt;
   void AddLink(TrieTree* data) {
     //std::map<TrieTree*, char>::iterator ite = links.find(data);
     //if (ite == links.end()) {
     //  links.insert(std::pair<TrieTree*, char>(data, 0));
     //}
 
-    vt.push_back(data);
+    //vt.push_back(data);
     return;
   }
 
   void RemoveLink(TrieTree* data) {
-    std::map<TrieTree*, char>::iterator ite = links.find(data);
-    if (ite != links.end()) {
-      links.erase(ite);
-    }
+    //std::map<TrieTree*, char>::iterator ite = links.find(data);
+    //if (ite != links.end()) {
+    //  links.erase(ite);
+    //}
     return;
   }
 
   void RemoveAllLink() {
-    links.clear();
+    //links.clear();
     return;
   }
 
   bool IsEmpty() {
-    return edgesCount == 0 && links.size() == 0;
+    //return edgesCount == 0 && links.size() == 0;
+    return false;
   }
 
   bool IsRoot() { return parent == nullptr; }
 
-   LinksIterator LinksBegin() {
-    return links.begin();
+  LinksIterator LinksBegin() {
+    //return links.begin();
+    return LinksIterator();
   }
 
-   LinksIterator LinksEnd() {
-    return links.end();
+  LinksIterator LinksEnd() {
+    //return links.end();
+    return LinksIterator();
   }
 
   TrieTree* AddWord(Slice& str) {
@@ -177,7 +175,6 @@ class TrieTree {
     unordered_map<unsigned char, TrieTree*>::iterator ite = edges.find(c);
     if (ite != edges.end()) {
       edges.erase(ite);
-      edgesCount--;
       return true;
     }
     return false;
@@ -192,8 +189,7 @@ class TrieTree {
     unordered_map<unsigned char, TrieTree*>::iterator ite = edges.find(c);
     if (ite == edges.end()) {
       TrieTree* t = new TrieTree(this, c, level_ + 1);
-      edges.insert(pair<unsigned char, TrieTree*>(c, t)); 
-      edgesCount++;
+      edges.insert(pair<unsigned char, TrieTree*>(c, t));
       return t;
     } 
     else {
@@ -203,22 +199,26 @@ class TrieTree {
 
  private:
   bool RemoveWordCore(Slice& str) {
-     if (str.size() == 0) {
-       return true;
-     }
-     char k = str[0];
-     if (edges[k] == nullptr) {
-       return false;
-     }
-     str.remove_prefix(1);
-     bool ret = edges[k]->RemoveWordCore(str);
-     if (!ret) {
-       return ret;
-     }
-
-     RemoveEdge(k);
-     return true;
-   }
+    if (str.size() == 0) {
+      return true;
+    }
+    char k = str[0];
+    str.remove_prefix(1);
+    //if (edges[k] == nullptr) {
+    //  return false;
+    //}
+    //bool ret = edges[k]->RemoveWordCore(str);
+    //if (!ret) {
+    //  return ret;
+    //}
+    unordered_map<unsigned char, TrieTree*>::iterator ite = edges.find(k);
+    if (ite == edges.end()) {
+      return false;
+    }
+    bool ret = ite->second->RemoveWordCore(str);
+    RemoveEdge(k);
+    return true;
+  }
 };
 
 }  // namespace leveldb

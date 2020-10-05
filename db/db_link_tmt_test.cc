@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include "util/trietree.h"
+#include "util/sorted_vector.h"
 #include "leveldb/db_link_tmt.h"
 #include "util/testutil.h"
 #include "leveldb/slice.h"
@@ -18,7 +19,7 @@ namespace tomatodb {
 
 static const int kNumThreads = 4;
 static const int kTestRounds = 1000;
-static const int kNumKeys = 10000;
+static const int kNumKeys = 100000;
 static const int kNumLinks = 200;
 //
 //TEST(TrieTreeTest, Simple) {
@@ -135,6 +136,72 @@ static const int kNumLinks = 200;
 //  ASSERT_EQ(ret.size(), 0);
 //}
 
+TEST(SortedVectorTest, Simple) { 
+  SortedVector<int> sv;
+  sv.insert(1);
+  sv.insert(0);
+  sv.insert(10);
+  sv.insert(6);
+  sv.insert(7);
+  sv.insert(8);
+  sv.insert(5);
+  sv.insert(9);
+  sv.insert(3);
+  sv.insert(4);
+  sv.insert(2);
+  sv.insert(5);
+}
+
+TEST(SortedVectorTest, Random1) {
+  const int TestNum = 1000;
+  vector<int> v;
+  v.reserve(TestNum);
+  for (int i = 0; i < TestNum; i++) {
+    v.push_back(i);
+  }
+  Random rnd(test::RandomSeed());
+  for (int i = 0; i < TestNum - 1; i++) {
+    int r = rnd.Uniform(TestNum - i - 1);
+    std::swap(v[r], v[TestNum - i - 1]);
+  }
+
+  SortedVector<int> sv;
+  for (int i = 0; i < TestNum; i++) {
+    sv.insert(v[i]);
+  }
+  int i = 0;
+  for (SortedVector<int>::iterator ite = sv.begin(); ite != sv.end(); ite++) {
+    ASSERT_EQ(*ite, i);    
+    i++;
+  }
+}
+
+TEST(SortedVectorTest, Random2) {
+  const int TestNum = 1000;
+  vector<int> v;
+  v.reserve(TestNum);
+  for (int i = 0; i < TestNum; i++) {
+    v.push_back(i);
+  }
+  Random rnd(test::RandomSeed());
+  for (int i = 0; i < TestNum - 1; i++) {
+    int r = rnd.Uniform(TestNum - i - 1);
+    std::swap(v[r], v[TestNum - i - 1]);
+  }
+
+  vector<int> sv;
+  for (int i = 0; i < TestNum; i++) {
+    sv.push_back(v[i]);
+    std::sort(sv.begin(), sv.end());
+  }
+
+  int i = 0;
+  for (vector<int>::iterator ite = sv.begin(); ite != sv.end(); ite++) {
+    ASSERT_EQ(*ite, i);
+    i++;
+  }
+}
+
 TEST(DBLinkTmtTest, Bench) {
   vector<string> vs;
   vs.reserve(kNumKeys);
@@ -152,21 +219,24 @@ TEST(DBLinkTmtTest, Bench) {
   TmtDBLink link("testdb", "recersive");
   Random rnd(test::RandomSeed());
   cout << " tree size " << sizeof(TrieTree) << endl;
+  cout << " tree size " << sizeof(unordered_map<unsigned char, TrieTree*>)
+       << endl;
+  
   
   for (int i = 0; i < kNumKeys; i++) {
     vector<string> vk;
     for (int j = 0; j < kNumLinks; j++) {
       int r = rnd.Uniform(kNumKeys);
       vk.push_back(vs[r]);
-      keyLinksReverse[r].push_back(i);
+      //keyLinksReverse[r].push_back(i);
     }
-    //link.AddLinks(vs[i], vk);
+    link.AddLinks(vs[i], vk);
   }
 
   vector<string*> ret;
   for (int i = 0; i < kNumKeys; i++) {
     link.GetLinksReverse(vs[i], ret);
-    ASSERT_EQ(ret.size(), keyLinksReverse[i].size());
+    //ASSERT_EQ(ret.size(), keyLinksReverse[i].size());
     for (int i = 0; i < ret.size(); i++) {
       delete ret[i];
     }
