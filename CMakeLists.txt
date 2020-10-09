@@ -177,6 +177,7 @@ target_sources(leveldb
 	"util/arena_tmt.h"
     "util/memoryhandler.cc"
     "util/memoryhandler.h"
+    "util/trietree.cc"
     "util/trietree.h"
     "util/sorted_vector.h"
     "util/bloom.cc"

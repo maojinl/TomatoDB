@@ -15,7 +15,7 @@ using namespace std;
 namespace tomatodb {
 
 class TmtDBLink {
- protected:
+ public:
   TrieTree link_to_;
   TrieTree link_reverse_;
   string db_name_;

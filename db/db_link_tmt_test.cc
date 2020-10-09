@@ -19,7 +19,7 @@ namespace tomatodb {
 
 static const int kNumThreads = 4;
 static const int kTestRounds = 1000;
-static const int kNumKeys = 100000;
+static const int kNumKeys = 10000000;
 static const int kNumLinks = 200;
 //
 //TEST(TrieTreeTest, Simple) {
@@ -207,16 +207,22 @@ TEST(DBLinkTmtTest, Bench) {
   vs.reserve(kNumKeys);
   string snum = std::to_string(kNumKeys);
   int len = snum.size();
+  TmtDBLink link("testdb", "recersive");
   vector<vector<int>> keyLinksReverse;
+  unordered_map<string, void*> link_map;
   for (int i = 0; i < kNumKeys; i++) {
     std::stringstream ss;
     ss << std::setw(len) << std::setfill('0') << i;
-    vs.push_back(ss.str());
+  /*  vs.push_back(ss.str());
     vector<int> vr;
-    keyLinksReverse.push_back(vr);
+    keyLinksReverse.push_back(vr);*/
+
+    //vector<string> vk;
+    //link.AddLinks(ss.str(), vk);
+    link_map.insert(pair<string, void*>(ss.str(), nullptr));
   }
 
-  TmtDBLink link("testdb", "recersive");
+  
   Random rnd(test::RandomSeed());
   cout << " tree size " << sizeof(TrieTree) << endl;
   cout << " tree size " << sizeof(unordered_map<unsigned char, TrieTree*>)
@@ -227,11 +233,20 @@ TEST(DBLinkTmtTest, Bench) {
     vector<string> vk;
     for (int j = 0; j < kNumLinks; j++) {
       int r = rnd.Uniform(kNumKeys);
-      vk.push_back(vs[r]);
+      //vk.push_back(vs[r]);
       //keyLinksReverse[r].push_back(i);
     }
-    link.AddLinks(vs[i], vk);
+    //link.AddLinks(vs[i], vk);
   }
+
+ cout << " trees count " << TrieTree::TreesCount
+       << endl;
+
+  cout << " trees count " << link.link_to_.GetSize() << endl;
+ cout << " trees count " << link.link_reverse_.GetSize() << endl;
+
+ while (true)
+   ;
 
   vector<string*> ret;
   for (int i = 0; i < kNumKeys; i++) {

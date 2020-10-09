@@ -10,16 +10,17 @@ namespace leveldb {
 
 using namespace std;
 
-template <typename T>
+template <typename T, class Comparator = std::less<T>>
 class SortedVector {
  public:
   typedef typename vector<T>::iterator iterator;
 
  private:
   vector<T> v;
+  const Comparator comp;
 
  public:
-  SortedVector() {}
+  SortedVector(const Comparator& __a = Comparator()) : comp(__a) {}
 
   virtual ~SortedVector() {}
 
@@ -75,24 +76,24 @@ class SortedVector {
     while (true) {
       if (r <= l) {
         idx = l;
-        if (v[l] == data) {
-          return true;
-        } else if (v[l] > data) {
+        if (comp(data, v[l])) {
           idx = l - 1;
           return false;
-        } else if (v[r] < data) {
+        } else if (comp(v[r], data)) {
           idx = r;
           return false;
-        }
+        } else if (!comp(v[l], data) && !comp(data, v[l])) {
+          return true;
+        } 
       }
 
       int m = (l + r) / 2;
-      if (v[m] == data) {
+      if (!comp(v[m], data) && !comp(data, v[m])) {
         idx = m;
         return true;
       }
 
-      if (v[m] < data) {
+      if (comp(v[m], data)) {
         l = m + 1;
       } else {
         r = m - 1;
