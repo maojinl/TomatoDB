@@ -100,26 +100,26 @@ class TrieTree {
   }
 
   TrieTree* FindWord(Slice& str) {
-    if (str.size() > 0) {
-      char k = str[0];
-      str.remove_prefix(1);
-      //if (edges[k] == nullptr) {
-      //  return nullptr;
-      //}
-      //return edges[k]->FindWord(str);
-      //unordered_map<unsigned char, TrieTree*>::iterator ite = edges.find(k);
-      int idx = 0;
-      for (; idx < edgesChar.size(); idx++) {
-        if (edgesChar[idx] == k) {
-          break;
-        }
-      }
+    //if (str.size() > 0) {
+    //  char k = str[0];
+    //  str.remove_prefix(1);
+    //  //if (edges[k] == nullptr) {
+    //  //  return nullptr;
+    //  //}
+    //  //return edges[k]->FindWord(str);
+    //  //unordered_map<unsigned char, TrieTree*>::iterator ite = edges.find(k);
+    //  int idx = 0;
+    //  for (; idx < edgesChar.size(); idx++) {
+    //    if (edgesChar[idx] == k) {
+    //      break;
+    //    }
+    //  }
 
-      if (idx == edgesChar.size() || edges[idx] == nullptr) {
-        return nullptr;
-      }
-      return edges[idx]->FindWord(str);
-    }
+    //  if (idx == edgesChar.size() || edges[idx] == nullptr) {
+    //    return nullptr;
+    //  }
+    //  return edges[idx]->FindWord(str);
+    //}
     return this;
   }
 
@@ -223,16 +223,16 @@ class TrieTree {
     //  return true;
     //}
     int idx = 0;
-    for (; idx < edgesChar.size(); idx++) {
-      if (edgesChar[idx] == c) {
-        break;
-      }
-    }
+    //for (; idx < edgesChar.size(); idx++) {
+    //  if (edgesChar[idx] == c) {
+    //    break;
+    //  }
+    //}
 
-    if (idx < edgesChar.size()) {
-      edges[idx] == nullptr;
-      return true;
-    }
+    //if (idx < edgesChar.size()) {
+    //  edges[idx] == nullptr;
+    //  return true;
+    //}
     return false;
   }
 
@@ -253,20 +253,21 @@ class TrieTree {
     //  return ite->second;
     //}
     int idx = 0;
-    for (; idx < edgesChar.size(); idx++) {
-      if (edgesChar[idx] == c) {
-        break;
-      }
-    }
+    //for (; idx < edgesChar.size(); idx++) {
+    //  if (edgesChar[idx] == c) {
+    //    break;
+    //  }
+    //}
 
-    if (idx == edgesChar.size()) {
-      TrieTree* t = new TrieTree(this, c, level_ + 1);
-      edgesChar.push_back(c);
-      edges.push_back(t);
-      return t;
-    } else {
-      return edges[idx];
-    }
+    //if (idx == edgesChar.size()) {
+    //  TrieTree* t = new TrieTree(this, c, level_ + 1);
+    //  edgesChar.push_back(c);
+    //  edges.push_back(t);
+    //  return t;
+    //} else {
+    //  return edges[idx];
+    //}
+    return this;
   }
 
  private:
@@ -291,18 +292,18 @@ class TrieTree {
     //bool ret = ite->second->RemoveWordCore(str);
 
     int idx = 0;
-    for (; idx < edgesChar.size(); idx++) {
-      if (edgesChar[idx] == k) {
-        break;
-      }
-    }
+    //for (; idx < edgesChar.size(); idx++) {
+    //  if (edgesChar[idx] == k) {
+    //    break;
+    //  }
+    //}
 
-    if (idx == edgesChar.size() || edges[idx] == nullptr) {
-      return false;
-    }
-    bool ret = edges[idx]->RemoveWordCore(str);
+    //if (idx == edgesChar.size() || edges[idx] == nullptr) {
+    //  return false;
+    //}
+    //bool ret = edges[idx]->RemoveWordCore(str);
 
-    RemoveEdge(k);
+    //RemoveEdge(k);
     return true;
   }
 };
