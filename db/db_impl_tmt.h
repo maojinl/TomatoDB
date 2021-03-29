@@ -12,7 +12,6 @@ namespace tomatodb {
 class TmtDBImpl : public DBImpl {
  protected:
   std::vector<Writer*> writers;
-  port::Mutex writers_queue_mutex_;
 
  public:
   TmtDBImpl(const Options& options, const std::string& dbname);
