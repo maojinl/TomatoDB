@@ -2075,6 +2075,22 @@ class ModelDB : public DB {
     return batch->Iterate(&handler);
   }
 
+    Status WriteEx(const WriteOptions& options, WriteBatch* updates,
+                 int tID) override {
+    class Handler : public WriteBatch::Handler {
+     public:
+      KVMap* map_;
+      void Put(const Slice& key, const Slice& value) override {
+        (*map_)[key.ToString()] = value.ToString();
+      }
+      void Delete(const Slice& key) override { map_->erase(key.ToString()); }
+    };
+    Handler handler;
+    handler.map_ = &map_;
+    WriteBatch* batch = new WriteBatch();
+    return batch->Iterate(&handler);
+  }
+
   bool GetProperty(const Slice& property, std::string* value) override {
     return false;
   }
