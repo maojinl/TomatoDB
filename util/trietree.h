@@ -40,11 +40,9 @@ class TrieTree {
  private:
   //int prefixes;
   TrieTree* parent;
-  //TrieTree** edges;
-  //unordered_map<unsigned char, TrieTree*> edges;
   SortedVector<TrieTreeEdgeNode*, TrieTreeEdgeNodeComp>* edges;
   //vector<TrieTree*> edges;
-  //vector<unsigned char> edgesChar;
+ // vector<unsigned char> edgesChar;
   //SortedVector<TrieTree*> links;
 
   unsigned char char_;
@@ -109,16 +107,11 @@ class TrieTree {
       //return edges[k]->FindWord(str);
       //unordered_map<unsigned char, TrieTree*>::iterator ite = edges.find(k);
       int idx = 0;
-      for (; idx < edgesChar.size(); idx++) {
-        if (edgesChar[idx] == k) {
-          break;
-        }
+      TrieTreeEdgeNode key(k, nullptr);
+      if (edges->find(&key, idx)) {
+        return (*edges)[idx]->edge->FindWord(str);
       }
-
-      if (idx == edgesChar.size() || edges[idx] == nullptr) {
-        return nullptr;
-      }
-      return edges[idx]->FindWord(str);
+      return nullptr;
     }
     return this;
   }
@@ -223,6 +216,11 @@ class TrieTree {
     //  return true;
     //}
     int idx = 0;
+    int idx = 0;
+    TrieTreeEdgeNode key(c, nullptr);
+    if (edges->find(&key, idx)) {
+      return (*edges)[idx]->edge;
+    }
     for (; idx < edgesChar.size(); idx++) {
       if (edgesChar[idx] == c) {
         break;
@@ -252,7 +250,12 @@ class TrieTree {
     //else {
     //  return ite->second;
     //}
+
     int idx = 0;
+    TrieTreeEdgeNode key(c, nullptr);
+    if (edges->find(&key, idx)) {
+      return (*edges)[idx]->edge;
+    }
     for (; idx < edgesChar.size(); idx++) {
       if (edgesChar[idx] == c) {
         break;

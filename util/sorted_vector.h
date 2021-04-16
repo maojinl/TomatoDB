@@ -23,9 +23,13 @@ class SortedVector {
   SortedVector(const Comparator& __a = Comparator()) : comp(__a) {}
 
   virtual ~SortedVector() {}
+  
+  T& operator[](int index)
+  { 
+      return v[index];
+  }
 
-  bool find(T data) {
-    int idx = 0;
+  bool find(T data, int& idx) {
     return binarySearch(0, v.size() - 1; data, idx);
   }
 
