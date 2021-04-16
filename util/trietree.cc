@@ -5,6 +5,5 @@
 //
 namespace leveldb {
 //
-  int TrieTree::TreesCount = 0;
 //
 }  // namespace leveldb
